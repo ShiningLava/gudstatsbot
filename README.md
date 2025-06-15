@@ -1,2 +1,2 @@
 # gudstatsbot
-discord bot for checking pokestats
+discord bot for checking pokebot stats
