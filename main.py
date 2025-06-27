@@ -1,11 +1,15 @@
 from typing import Optional
-
 import discord
 from discord import app_commands
 import sqlite3
+import json
 
-MY_GUILD = discord.Object(id=0)  # replace with your guild id
-token = '' # replace with your token
+with open('config.json', 'r') as g:
+    config = json.load(g)
+
+token = config['token']
+guild_id = config['guild_id']
+target_user_1 = config['target_user_1']
 
 sqliteConnection = sqlite3.connect('pokebot.db')
 cursor = sqliteConnection.cursor()
@@ -36,7 +40,6 @@ if listOfTables == []:
     receiving_user varchar(100)
     );"""
     cursor.execute(sql_command)
-    #conn.commit()
 
 else:
     print('Pokemon table found, continuing...')
@@ -60,9 +63,9 @@ class MyClient(discord.Client):
     # By doing so, we don't have to wait up to an hour until they are shown to the end-user.
     async def setup_hook(self):
         # This copies the global commands over to your guild.
-        self.tree.copy_global_to(guild=MY_GUILD)
-        await self.tree.sync(guild=MY_GUILD)
-
+        self.tree.copy_global_to(guild=discord.Object(id=guild_id))
+        await self.tree.sync(guild=discord.Object(id=guild_id))
+        print("Global slash commands updated for GudStatsBot")
 
 intents = discord.Intents.default()
 client = MyClient(intents=intents)
@@ -78,7 +81,7 @@ async def on_message(message):
         return
 
     #if message.author.id == (1261431264796213269):
-    if message.author.id == (223895172675534848):
+    if message.author.id == (int(target_user_1)):
         print('Pokebot message detected')
         cursor = sqliteConnection.cursor()
         listoftesttables = cursor.execute(
@@ -88,17 +91,11 @@ async def on_message(message):
             cursor = conn.cursor()
             print("Connected to the database")
             cursor.execute('CREATE TABLE IF NOT EXISTS testing_columns (species VARCHAR(30), coolness smallint);')
-            #print('CREATE TABLE IF NOT EXISTS test (species varchar(30));')
-            #try:
-                #cursor.execute('ALTER TABLE test ADD COLUMN "species";')
-                #cursor.execute('INSERT INTO test VALUES (sableye);')
-            #except Exception as e:
-                #print (e)
-            #cursor.execute('INSERT INTO test(species) VALUES(Sableye);')
             species = "sableye"
             cursor.execute("INSERT INTO testing_columns (species, coolness) VALUES (?, ?)", ("Sableye", 10))
             cursor.execute(sql_test_table)
             conn.commit()
+            print('Database updated')
 
 
 client.run(token)
