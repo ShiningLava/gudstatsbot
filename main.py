@@ -37,11 +37,52 @@ async def on_message(message):
 
         embed_content_in_dict = message.embeds[0].to_dict()
         fields_list = embed_content_in_dict["fields"]
-        print(fields_list)
+
+        ## Extract 'Shiny Value'
         extracted_shiny_value_dict = fields_list[0]
-        print(extracted_shiny_value_dict)
         extracted_shiny_value = extracted_shiny_value_dict["value"]
         print(f"Shiny Value: {extracted_shiny_value}")
+
+        ## Extract Total IVs
+        extracted_total_ivs_dict = fields_list[1]
+        extracted_total_ivs = extracted_total_ivs_dict["name"]
+        print(f"Total IVs: {extracted_total_ivs}")
+
+
+        ## Extract Held Item
+        extracted_held_item_dict = fields_list[2]
+        extracted_held_item = extracted_held_item_dict["value"]
+        print(f"Held Item: {extracted_held_item}")
+
+
+        ## Extract Species
+        extracted_species_dict = fields_list[3]
+        extracted_species = extracted_species_dict["name"]
+        print(f"Species: {extracted_species}")
+
+
+        ## Extract Target Phase Encounters
+        extracted_target_phase_encounters_dict = fields_list[4]
+        extracted_target_phase_encounters = extracted_target_phase_encounters_dict["value"]
+        print(f"Target Phase Encounters: {extracted_target_phase_encounters}")
+
+
+        ## Extract Total Phase Encounters
+        extracted_total_phase_encounters_dict = fields_list[5]
+        extracted_total_phase_encounters = extracted_total_phase_encounters_dict["value"]
+        print(f"Total Phase Encounters: {extracted_total_phase_encounters}")
+
+
+        ## Extract Phase Same Pokémon Streak
+        extracted_phase_same_pokemon_streak_dict = fields_list[8]
+        extracted_phase_same_pokemon_streak = extracted_phase_same_pokemon_streak_dict["value"]
+        print(f"Phase Same Pokémon Streak: {extracted_phase_same_pokemon_streak}")
+
+
+        ## Trim excess data from Total IVs
+        for character in 'IVs()':
+            formatted_extracted_total_ivs = int(extracted_total_ivs.replace(character, ''))
+        print(f"Total IVs trimmed: {formatted_extracted_total_ivs}")
 
 @tree.command(
     name="database_rebuild",
@@ -111,7 +152,6 @@ def generate_pokebot_entry():
         print("error opening database", e)
 
 def main():
-
     client.run(token)
 
 if __name__ == "__main__":
