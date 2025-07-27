@@ -15,6 +15,7 @@ sqliteConnection = sqlite3.connect('pokebot.db')
 cursor = sqliteConnection.cursor()
 
 intents = discord.Intents.default()
+intents.message_content = True
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
@@ -32,6 +33,15 @@ async def on_message(message):
         print('Pokebot message detected')
         cursor = sqliteConnection.cursor()
         generate_pokebot_entry()
+        print(message.content)
+
+        embed_content_in_dict = message.embeds[0].to_dict()
+        fields_list = embed_content_in_dict["fields"]
+        print(fields_list)
+        extracted_shiny_value_dict = fields_list[0]
+        print(extracted_shiny_value_dict)
+        extracted_shiny_value = extracted_shiny_value_dict["value"]
+        print(f"Shiny Value: {extracted_shiny_value}")
 
 @tree.command(
     name="database_rebuild",
@@ -41,7 +51,7 @@ async def on_message(message):
 async def database_rebuild(interaction):
     channel = client.get_channel(int(target_channel))
     counter = 0
-    async for message in channel.history(limit=100000):
+    async for message in channel.history(limit=1000):
         if message.author.id == (int(target_user_1)):
             counter += 1
 
