@@ -41,16 +41,29 @@ async def on_message(message):
 async def database_rebuild(interaction):
     channel = client.get_channel(int(target_channel))
     await interaction.response.defer()
-    counter = 0
     async for message in channel.history(limit=10000):
         if message.author.id == (int(target_user_1)):
-            counter += 1
             parse_pokebot_message(message)
 
-    print(counter)
+    await interaction.followup.send("Pokebot database has been successfully updated!")
 
-    #await interaction.response.send_message(f"Here's a number of something: {counter}")
-    await interaction.followup.send(f"Here's a number of something: {counter}")
+@tree.command(
+    name="highest_iv",
+    description="Returns the entry with the highest total IVs",
+    guild=discord.Object(id=guild_id),
+)
+async def highest_iv(interaction):
+    channel = client.get_channel(int(target_channel))
+    await interaction.response.defer()
+
+    with sqlite3.connect("pokebot.db") as conn:
+        cursor = conn.cursor()
+        sqlite_select_query = """SELECT * FROM pokebot_test ORDER BY total_ivs DESC"""
+        cursor.execute(sqlite_select_query)
+        size = 3
+        records = cursor.fetchmany(size)
+
+    await interaction.followup.send(f"Here's the top 3 highest IV Pokemon: {records}")
 
 def add_pokebot_entry(conn, entry):
     sql = '''INSERT INTO pokebot_test(species,
@@ -59,19 +72,20 @@ def add_pokebot_entry(conn, entry):
             held_item,
             phase_encounters,
             phase_same_pkmn_streak,
-            receiving_user)
-             VALUES(?,?,?,?,?,?,?) '''
+            receiving_user,
+            message_id)
+             VALUES(?,?,?,?,?,?,?,?) '''
     cur = conn.cursor()
     cur.execute(sql, entry)
     conn.commit()
     # get the id of the last inserted row
     return cur.lastrowid
 
-def generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_phase_encounters, total_phase_encounters, phase_same_pokemon_streak):
+def generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_phase_encounters, total_phase_encounters, phase_same_pokemon_streak, message_id):
     try:
         with sqlite3.connect("pokebot.db") as conn:
             pokebot_entries = [
-                (species, total_ivs, shiny_value, held_item, target_phase_encounters, phase_same_pokemon_streak, 'user')
+                (species, total_ivs, shiny_value, held_item, target_phase_encounters, phase_same_pokemon_streak, 'user', message_id)
             ]
             pokebot_test_table_sql = """ CREATE TABLE pokebot_test(species VARCHAR(30),
                 total_ivs INT,
@@ -79,7 +93,8 @@ def generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_ph
                 held_item VARCHAR(30),
                 phase_encounters INT,
                 phase_same_pkmn_streak INT,
-                receiving_user VARCHAR(30))
+                receiving_user VARCHAR(30),
+                message_id VARCHAR(50))
                 """
             try:
                 cursor.execute(pokebot_test_table_sql)
@@ -92,78 +107,53 @@ def generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_ph
         print("error opening database", e)
 
 def parse_pokebot_message(message):
-    print("parsing pokebot message")
-    
     if message.content.startswith("Encountered a"):
         print("pokebot shiny or anti-shiny detected")
         cursor = sqliteConnection.cursor()
-        #print(message.content)
-
-        ## Disabled for testing, this should be reenabled to parse Pokebot embedded data
         embed_content_in_dict = message.embeds[0].to_dict()
-        #embed_content_in_dict = {'footer': {'text': 'ID: chance is smelly but is also 500k encounters ahead of me | Pokémon Emerald (E)\nPokéBot Gen3 20250714.0'}, 'image': {'w>
         fields_list = embed_content_in_dict["fields"]
-
         ## Extract 'Shiny Value'
         extracted_shiny_value_dict = fields_list[0]
         shiny_value = extracted_shiny_value_dict["value"]
         print(f"Shiny Value: {shiny_value}")
-
         ## Extract Total IVs
         extracted_total_ivs_dict = fields_list[1]
         total_ivs = extracted_total_ivs_dict["name"]
-        print(f"Total IVs: {total_ivs}")
-
-
+        #print(f"Total IVs: {total_ivs}")
         ## Trim excess data from Total IVs
         for character in 'IVs() ':
             total_ivs = total_ivs.replace(character, '')
-        print(f"Total IVs trimmed: {total_ivs}")
-
-
+        print(f"Total IVs: {total_ivs}")
         ## Extract Held Item
         extracted_held_item_dict = fields_list[2]
         held_item = extracted_held_item_dict["value"]
         print(f"Held Item: {held_item}")
-
-
         ## Extract Species
         extracted_species_dict = fields_list[3]
         species = extracted_species_dict["name"]
-        print(f"Species: {species}")
-
-
+        #print(f"Species: {species}")
         ## Trim excess data from species
         species = species.replace(" Encounters", "")
-        print(f"Species trimmed: {species}")
-
-
+        print(f"Species: {species}")
         ## Extract Target Phase Encounters
         extracted_target_phase_encounters_dict = fields_list[4]
         target_phase_encounters = extracted_target_phase_encounters_dict["value"]
         print(f"Target Phase Encounters: {target_phase_encounters}")
-
-
         ## Extract Total Phase Encounters
         extracted_total_phase_encounters_dict = fields_list[5]
         total_phase_encounters = extracted_total_phase_encounters_dict["value"]
         print(f"Total Phase Encounters: {total_phase_encounters}")
-
-
         ## Extract Phase Same Pokémon Streak
         extracted_phase_same_pokemon_streak_dict = fields_list[8]
         phase_same_pokemon_streak = extracted_phase_same_pokemon_streak_dict["value"]
-        print(f"Phase Same Pokémon Streak: {phase_same_pokemon_streak}")
-
-
+        #print(f"Phase Same Pokémon Streak: {phase_same_pokemon_streak}")
         ## Trim excess data from Phase Same Pokémon Streak
         phase_same_pokemon_streak = phase_same_pokemon_streak.replace(" were encountered in a row!", "")
-        print(f"Phase Same Pokémon Streak trimmed: {phase_same_pokemon_streak}\n")
-
-
+        print(f"Phase Same Pokémon Streak: {phase_same_pokemon_streak}\n")
         ## Receiving User
-
-        generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_phase_encounters, total_phase_encounters, phase_same_pokemon_streak)
+        ## Message ID
+        message_id = message.id
+        generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_phase_encounters, total_phase_encounters, phase_same_pokemon_streak, message_id)
     else:
         pass
 
