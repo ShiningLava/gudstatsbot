@@ -33,11 +33,16 @@ async def on_message(message):
         print('Pokebot message detected')
         from_db_rebuild = False
         new_highest_iv = False
-        new_highest_iv = parse_pokebot_message(message, from_db_rebuild)
-        #current_highest_iv = check_highest_iv()
-        #compare_highest_iv(current_highest_iv)
+        check_for = "highest"
+        new_highest_iv = parse_pokebot_message(message, from_db_rebuild, check_for)
         if new_highest_iv:
             await message.channel.send('New highest IV pokemon recorded')
+
+        new_lowest_iv = False
+        check_for = "lowest"
+        new_lowest_iv = parse_pokebot_message(message, from_db_rebuild, check_for)
+        if new_lowest_iv:
+            await message.channel.send('New lowest IV pokemon recorded :(')
 
 @tree.command(
     name="database_rebuild",
@@ -62,7 +67,6 @@ async def database_rebuild(interaction):
 async def highest_iv(interaction):
     channel = client.get_channel(int(target_channel))
     await interaction.response.defer()
-    ## Call new function for checking highest iv
     highest_iv_in_db = check_highest_iv()
 
     #with sqlite3.connect("pokebot.db") as conn:
@@ -81,30 +85,52 @@ async def highest_iv(interaction):
 async def lowest_iv(interaction):
     channel = client.get_channel(int(target_channel))
     await interaction.response.defer()
-    with sqlite3.connect("pokebot.db") as conn:
-        cursor = conn.cursor()
-        sqlite_select_query = """SELECT * FROM pokebot_test ORDER BY total_ivs"""
-        cursor.execute(sqlite_select_query)
-        size = 3
-        records = cursor.fetchmany(size)
-    await interaction.followup.send(f"Here's the top 3 lowest IV Pokemon: {records}")
+    lowest_iv_in_db = check_lowest_iv()
+
+    #with sqlite3.connect("pokebot.db") as conn:
+    #    cursor = conn.cursor()
+    #    sqlite_select_query = """SELECT * FROM pokebot_test ORDER BY total_ivs"""
+    #    cursor.execute(sqlite_select_query)
+    #    size = 1
+    #    records = cursor.fetchmany(size)
+    await interaction.followup.send(f"Here's the lowest IV Pokemon: {lowest_iv_in_db}")
 
 def check_highest_iv():
     with sqlite3.connect("pokebot.db") as conn:
         cursor = conn.cursor()
         sqlite_select_query = """SELECT * FROM pokebot_test ORDER BY total_ivs DESC"""
-        cursor.execute(sqlite_select_query)
-        size = 1
-        records = cursor.fetchmany(size)
-        return records
+        try:
+            cursor.execute(sqlite_select_query)
+            size = 1
+            records = cursor.fetchmany(size)
+            return records
+        except:
+            pass
+
+def check_lowest_iv():
+    with sqlite3.connect("pokebot.db") as conn:
+        cursor = conn.cursor()
+        sqlite_select_query = """SELECT * FROM pokebot_test ORDER BY total_ivs ASC"""
+        try:
+            cursor.execute(sqlite_select_query)
+            size = 1
+            records = cursor.fetchmany(size)
+            return records
+        except:
+            pass
 
 def compare_highest_iv(current_highest_iv, total_ivs):
     current_highest_shiny_dict = current_highest_iv[0]
     formatted_current_highest_iv = current_highest_shiny_dict[1]
-    print(int(formatted_current_highest_iv))
-    print(int(total_ivs))
     if int(total_ivs) > int(formatted_current_highest_iv):
         print("NEW HIGHEST IV FOUND!")
+        return True
+
+def compare_lowest_iv(current_lowest_iv, total_ivs):
+    current_lowest_shiny_dict = current_lowest_iv[0]
+    formatted_current_lowest_iv = current_lowest_shiny_dict[1]
+    if int(total_ivs) < int(formatted_current_lowest_iv):
+        print("New lowest IV found :(")
         return True
 
 def add_pokebot_entry(conn, entry):
@@ -148,7 +174,14 @@ def generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_ph
     except sqlite3.Error as e:
         print("error opening database", e)
 
-def parse_pokebot_message(message, from_db_rebuild):
+def parse_pokebot_message(*args):
+    message = args[0]
+    from_db_rebuild = args[1]
+    try:
+        check_for = args[2]
+        print("args[2] found, likely due to a pokebot message being processed")
+    except:
+        pass
     if message.content.startswith("Encountered a"):
         print("pokebot shiny or anti-shiny detected")
         cursor = sqliteConnection.cursor()
@@ -161,7 +194,6 @@ def parse_pokebot_message(message, from_db_rebuild):
         ## Extract Total IVs
         extracted_total_ivs_dict = fields_list[1]
         total_ivs = extracted_total_ivs_dict["name"]
-        #print(f"Total IVs: {total_ivs}")
         ## Trim excess data from Total IVs
         for character in 'IVs() ':
             total_ivs = total_ivs.replace(character, '')
@@ -173,7 +205,6 @@ def parse_pokebot_message(message, from_db_rebuild):
         ## Extract Species
         extracted_species_dict = fields_list[3]
         species = extracted_species_dict["name"]
-        #print(f"Species: {species}")
         ## Trim excess data from species
         species = species.replace(" Encounters", "")
         print(f"Species: {species}")
@@ -188,7 +219,6 @@ def parse_pokebot_message(message, from_db_rebuild):
         ## Extract Phase Same Pokémon Streak
         extracted_phase_same_pokemon_streak_dict = fields_list[8]
         phase_same_pokemon_streak = extracted_phase_same_pokemon_streak_dict["value"]
-        #print(f"Phase Same Pokémon Streak: {phase_same_pokemon_streak}")
         ## Trim excess data from Phase Same Pokémon Streak
         phase_same_pokemon_streak = phase_same_pokemon_streak.replace(" were encountered in a row!", "")
         print(f"Phase Same Pokémon Streak: {phase_same_pokemon_streak}\n")
@@ -196,29 +226,26 @@ def parse_pokebot_message(message, from_db_rebuild):
         ## Message ID
         message_id = message.id
 
-        new_highest_iv = False
         try:
+            new_highest_iv = False
             current_highest_iv = check_highest_iv()
             new_highest_iv = compare_highest_iv(current_highest_iv, total_ivs)
-            #print(new_highest_iv)
-            #if new_highest_iv:
-            #    print("NEW HIGHEST IV (parse_pokebot_message)")
-            #    return new_highest_iv
+
+            new_lowest_iv = False
+            current_lowest_iv = check_lowest_iv()
+            new_lowest_iv = compare_lowest_iv(current_lowest_iv, total_ivs)
         except:
             pass
         generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_phase_encounters, total_phase_encounters, phase_same_pokemon_streak, message_id)
 
-        if new_highest_iv:
-            print("NEW HIGHEST IV (parse_pokebot_message)")
-            return True
-
-        #current_highest_iv = check_highest_iv()
-        #compare_highest_iv(current_highest_iv, total_ivs)
-        #print(f"{new_highest_iv} ----------------------------------------\n")
-
-        #if new_highest_iv:
-        #    print("NEW HIGHEST IV (parse_pokebot_message)")
-        #    return new_highest_iv
+        try:
+            check_for = args[2]
+            if new_highest_iv and check_for == "highest":
+                return True
+            elif new_lowest_iv and check_for == "lowest":
+                return True
+        except:
+            pass
     else:
         pass
 
