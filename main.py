@@ -31,16 +31,27 @@ async def on_message(message):
         return
     if message.author.id == (int(target_user_1)):
         print('Pokebot message detected')
-        from_db_rebuild = False
-        new_highest_iv = False
-        check_for = "highest"
-        new_highest_iv = parse_pokebot_message(message, from_db_rebuild, check_for)
+        #from_db_rebuild = False
+        #new_highest_iv = False
+        #check_for = "highest"
+        #new_highest_iv = parse_pokebot_message(message, from_db_rebuild, check_for)
+        #if new_highest_iv:
+        #    await message.channel.send('New highest IV pokemon recorded')
+
+        #new_lowest_iv = False
+        #check_for = "lowest"
+        #new_lowest_iv = parse_pokebot_message(message, from_db_rebuild, check_for)
+        #if new_lowest_iv:
+        #    await message.channel.send('New lowest IV pokemon recorded :(')
+
+        total_ivs = parse_pokebot_message(message)
+        current_highest_iv = check_highest_iv()
+        new_highest_iv = compare_highest_iv(current_highest_iv, total_ivs)
         if new_highest_iv:
             await message.channel.send('New highest IV pokemon recorded')
 
-        new_lowest_iv = False
-        check_for = "lowest"
-        new_lowest_iv = parse_pokebot_message(message, from_db_rebuild, check_for)
+        current_lowest_iv = check_lowest_iv()
+        new_lowest_iv = compare_lowest_iv(current_lowest_iv, total_ivs)
         if new_lowest_iv:
             await message.channel.send('New lowest IV pokemon recorded :(')
 
@@ -98,7 +109,7 @@ async def lowest_iv(interaction):
 def check_highest_iv():
     with sqlite3.connect("pokebot.db") as conn:
         cursor = conn.cursor()
-        sqlite_select_query = """SELECT * FROM pokebot_test ORDER BY total_ivs DESC"""
+        sqlite_select_query = """SELECT * FROM pokebot ORDER BY total_ivs DESC"""
         try:
             cursor.execute(sqlite_select_query)
             size = 1
@@ -110,7 +121,7 @@ def check_highest_iv():
 def check_lowest_iv():
     with sqlite3.connect("pokebot.db") as conn:
         cursor = conn.cursor()
-        sqlite_select_query = """SELECT * FROM pokebot_test ORDER BY total_ivs ASC"""
+        sqlite_select_query = """SELECT * FROM pokebot ORDER BY total_ivs ASC"""
         try:
             cursor.execute(sqlite_select_query)
             size = 1
@@ -134,7 +145,7 @@ def compare_lowest_iv(current_lowest_iv, total_ivs):
         return True
 
 def add_pokebot_entry(conn, entry):
-    sql = '''INSERT INTO pokebot_test(species,
+    sql = '''INSERT INTO pokebot(species,
             total_ivs,
             shiny_value,
             held_item,
@@ -152,10 +163,15 @@ def add_pokebot_entry(conn, entry):
 def generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_phase_encounters, total_phase_encounters, phase_same_pokemon_streak, message_id):
     try:
         with sqlite3.connect("pokebot.db") as conn:
+            cursor.execute("""SELECT * FROM pokebot WHERE message_id=? """, (message_id,))
+            result = cursor.fetchone()
+            if result:
+                print("Message ID already found in database. Skipping entry...")
+                return
             pokebot_entries = [
                 (species, total_ivs, shiny_value, held_item, target_phase_encounters, phase_same_pokemon_streak, 'user', message_id)
             ]
-            pokebot_test_table_sql = """ CREATE TABLE pokebot_test(species VARCHAR(30),
+            pokebot_table_sql = """ CREATE TABLE pokebot(species VARCHAR(30),
                 total_ivs INT,
                 shiny_value INT,
                 held_item VARCHAR(30),
@@ -165,7 +181,7 @@ def generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_ph
                 message_id VARCHAR(50))
                 """
             try:
-                cursor.execute(pokebot_test_table_sql)
+                cursor.execute(pokebot_table_sql)
             except sqlite3.Error as e:
                 pass
             for entry in pokebot_entries:
@@ -226,30 +242,53 @@ def parse_pokebot_message(*args):
         ## Message ID
         message_id = message.id
 
-        try:
-            new_highest_iv = False
-            current_highest_iv = check_highest_iv()
-            new_highest_iv = compare_highest_iv(current_highest_iv, total_ivs)
+        #try:
+        #    new_highest_iv = False
+        #    current_highest_iv = check_highest_iv()
+        #    new_highest_iv = compare_highest_iv(current_highest_iv, total_ivs)
 
-            new_lowest_iv = False
-            current_lowest_iv = check_lowest_iv()
-            new_lowest_iv = compare_lowest_iv(current_lowest_iv, total_ivs)
-        except:
-            pass
+        #    new_lowest_iv = False
+        #    current_lowest_iv = check_lowest_iv()
+        #    new_lowest_iv = compare_lowest_iv(current_lowest_iv, total_ivs)
+        #except:
+        #    pass
         generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_phase_encounters, total_phase_encounters, phase_same_pokemon_streak, message_id)
 
-        try:
-            check_for = args[2]
-            if new_highest_iv and check_for == "highest":
-                return True
-            elif new_lowest_iv and check_for == "lowest":
-                return True
-        except:
-            pass
+        return total_ivs
+
+        #try:
+        #    check_for = args[2]
+        #    if new_highest_iv and check_for == "highest":
+        #        return True
+        #    elif new_lowest_iv and check_for == "lowest":
+        #        return True
+        #except:
+        #    pass
     else:
         pass
 
+def initial_create_db():
+    try:
+        with sqlite3.connect("pokebot.db") as conn:
+            pokebot_table_sql = """ CREATE TABLE pokebot(
+                species VARCHAR(30),
+                total_ivs INT,
+                shiny_value INT,
+                held_item VARCHAR(30),
+                phase_encounters INT,
+                phase_same_pkmn_streak INT,
+                receiving_user VARCHAR(30),
+                message_id VARCHAR(50))
+                """
+            try:
+                cursor.execute(pokebot_table_sql)
+            except sqlite3.Error as e:
+                pass
+    except Exception as e:
+        print(e)
+
 def main():
+    initial_create_db()
     client.run(token)
 
 if __name__ == "__main__":
