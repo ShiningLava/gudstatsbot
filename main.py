@@ -144,6 +144,34 @@ def compare_lowest_iv(current_lowest_iv, total_ivs):
         print("New lowest IV found :(")
         return True
 
+def compare_alpha_species(current_alpha, total_ivs, species):
+    print(f"current alpha = {current_alpha}")
+    current_alpha_species = current_alpha[0]
+    print(f"species being analyzed: {species}")
+    print(f"current alpha species: {current_alpha_species}")
+    current_alpha_ivs = current_alpha[1]
+    #formatted_current_alpha = current_alpha_dict[1]
+    print(f"current alpha ivs for {species}: {current_alpha_ivs}\n")
+    print(f"int(total_ivs): {int(total_ivs)}")
+    print(f"int(current_alpha_ivs): {int(current_alpha_ivs)}\n")
+    if int(total_ivs) > (current_alpha_ivs):
+        print("New alpha found!")
+        return True
+
+def check_current_alpha(species):
+    with sqlite3.connect("pokebot.db") as conn:
+        cursor = conn.cursor()
+        sqlite_select_query = f"""SELECT * FROM pokebot WHERE species = '{species}' ORDER BY total_ivs DESC"""
+        try:
+            records = cursor.execute(sqlite_select_query)
+            records = cursor.fetchone()
+            print(f"here's the fetched record for {species} with the highest IVs: {records}")
+            #size = 1
+            #records = cursor.fetchmany(size)
+            return records
+        except Exception as e:
+            print(e)
+
 def add_pokebot_entry(conn, entry):
     sql = '''INSERT INTO pokebot(species,
             total_ivs,
@@ -237,7 +265,7 @@ def parse_pokebot_message(*args):
         phase_same_pokemon_streak = extracted_phase_same_pokemon_streak_dict["value"]
         ## Trim excess data from Phase Same Pokémon Streak
         phase_same_pokemon_streak = phase_same_pokemon_streak.replace(" were encountered in a row!", "")
-        print(f"Phase Same Pokémon Streak: {phase_same_pokemon_streak}\n")
+        #print(f"Phase Same Pokémon Streak: {phase_same_pokemon_streak}\n")
         ## Receiving User
         ## Message ID
         message_id = message.id
@@ -252,7 +280,27 @@ def parse_pokebot_message(*args):
         #    new_lowest_iv = compare_lowest_iv(current_lowest_iv, total_ivs)
         #except:
         #    pass
+
+        print(f"species: {species}")
+        try: 
+            current_alpha = check_current_alpha(species)
+            new_alpha_species = compare_alpha_species(current_alpha, total_ivs, species)
+            print(f"new alpha species: {new_alpha_species}")
+            if new_alpha_species:
+                print(f"NEW ALPHA FOUND: {species} with {total_ivs} IVs")
+        except:
+            print("Exception in checking database. Ignore this message if it's building the database")
+
         generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_phase_encounters, total_phase_encounters, phase_same_pokemon_streak, message_id)
+
+        ## Temporarily here for testing
+        ## Once working, move to on_message
+        #print(f"species: {species}")
+        #current_alpha = check_current_alpha(species)
+        #new_alpha_species = compare_alpha_species(current_alpha, total_ivs, species)
+        #print(f"new alpha species: {new_alpha_species}")
+        #if new_alpha_species:
+        #    print("NEW ALPHA FOUND: {species}{total_ivs}")
 
         return total_ivs
 
