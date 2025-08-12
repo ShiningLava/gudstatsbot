@@ -66,7 +66,8 @@ async def database_rebuild(interaction):
     async for message in channel.history(limit=10000):
         if message.author.id == (int(target_user_1)):
             from_db_rebuild = True
-            parse_pokebot_message(message, from_db_rebuild)
+            #parse_pokebot_message(message, from_db_rebuild)
+            parse_pokebot_message(message)
 
     await interaction.followup.send("Pokebot database has been successfully updated!")
 
@@ -220,12 +221,12 @@ def generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_ph
 
 def parse_pokebot_message(*args):
     message = args[0]
-    from_db_rebuild = args[1]
-    try:
-        check_for = args[2]
-        print("args[2] found, likely due to a pokebot message being processed")
-    except:
-        pass
+    #from_db_rebuild = args[1]
+    #try:
+    #    check_for = args[2]
+    #    print("args[2] found, likely due to a pokebot message being processed")
+    #except:
+    #    pass
     if message.content.startswith("Encountered a"):
         print("pokebot shiny or anti-shiny detected")
         cursor = sqliteConnection.cursor()
@@ -285,7 +286,7 @@ def parse_pokebot_message(*args):
         try: 
             current_alpha = check_current_alpha(species)
             new_alpha_species = compare_alpha_species(current_alpha, total_ivs, species)
-            print(f"new alpha species: {new_alpha_species}")
+            #print(f"new alpha species: {new_alpha_species}")
             if new_alpha_species:
                 print(f"NEW ALPHA FOUND: {species} with {total_ivs} IVs")
         except:
