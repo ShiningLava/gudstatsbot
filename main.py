@@ -31,16 +31,22 @@ async def on_message(message):
         return
     if message.author.id == (int(target_user_1)):
         print('Pokebot message detected')
-        total_ivs = parse_pokebot_message(message)
-        current_highest_iv = check_highest_iv()
-        new_highest_iv = compare_highest_iv(current_highest_iv, total_ivs)
-        if new_highest_iv:
-            await message.channel.send('New highest IV pokemon recorded')
+        parse_response = parse_pokebot_message(message)
+        if parse_response == "alpha":
+            await message.channel.send("New alpha found!")
+        if parse_response == "stinker":
+            await message.channel.send("New stinker found!")
 
-        current_lowest_iv = check_lowest_iv()
-        new_lowest_iv = compare_lowest_iv(current_lowest_iv, total_ivs)
-        if new_lowest_iv:
-            await message.channel.send('New lowest IV pokemon recorded :(')
+        #total_ivs = parse_pokebot_message(message)
+        #current_highest_iv = check_highest_iv()
+        #new_highest_iv = compare_highest_iv(current_highest_iv, total_ivs)
+        #if new_highest_iv:
+        #    await message.channel.send('New highest IV pokemon recorded')
+
+        #current_lowest_iv = check_lowest_iv()
+        #new_lowest_iv = compare_lowest_iv(current_lowest_iv, total_ivs)
+        #if new_lowest_iv:
+        #    await message.channel.send('New lowest IV pokemon recorded :(')
 
 @tree.command(
     name="database_rebuild",
@@ -117,17 +123,32 @@ def compare_lowest_iv(current_lowest_iv, total_ivs):
         print("New lowest IV found :(")
         return True
 
-def compare_alpha_species(current_alpha, total_ivs, species):
-    print(f"current alpha = {current_alpha}")
-    current_alpha_species = current_alpha[0]
-    print(f"species being analyzed: {species}")
-    print(f"current alpha species: {current_alpha_species}")
-    current_alpha_ivs = current_alpha[1]
-    print(f"current alpha ivs for {species}: {current_alpha_ivs}\n")
-    print(f"int(total_ivs): {int(total_ivs)}")
-    print(f"int(current_alpha_ivs): {int(current_alpha_ivs)}\n")
-    if int(total_ivs) > (current_alpha_ivs):
-        print("New alpha found!")
+#def compare_alpha_species(current_alpha, total_ivs, species):
+#    print(f"current alpha = {current_alpha}")
+#    current_alpha_species = current_alpha[0]
+#    print(f"species being analyzed: {species}")
+#    print(f"current alpha species: {current_alpha_species}")
+#    current_alpha_ivs = current_alpha[1]
+#    print(f"current alpha ivs for {species}: {current_alpha_ivs}\n")
+#    print(f"int(total_ivs): {int(total_ivs)}")
+#    print(f"int(current_alpha_ivs): {int(current_alpha_ivs)}\n")
+#    if int(total_ivs) > (current_alpha_ivs):
+#        print("New alpha found!")
+#        return True
+
+
+def compare_alpha_species(current_alpha, message_id):
+    current_alpha_id = int(current_alpha[7])
+    #print(f"current message id: {message_id}")
+    #print(f"current alpha id: {current_alpha_id}")
+    if message_id == current_alpha_id:
+        print("New Alpha Found!")
+        return True
+
+def compare_stinker_species(current_stinker, message_id):
+    current_stinker_id = int(current_stinker[7])
+    if message_id == current_stinker_id:
+        print("New Stinker Found!")
         return True
 
 def check_current_alpha(species):
@@ -138,6 +159,18 @@ def check_current_alpha(species):
             records = cursor.execute(sqlite_select_query)
             records = cursor.fetchone()
             print(f"here's the fetched record for {species} with the highest IVs: {records}")
+            return records
+        except Exception as e:
+            print(e)
+
+def check_current_stinker(species):
+    with sqlite3.connect("pokebot.db") as conn:
+        cursor = conn.cursor()
+        sqlite_select_query = f"""SELECT * FROM pokebot WHERE species = '{species}' ORDER BY total_ivs ASC"""
+        try:
+            records = cursor.execute(sqlite_select_query)
+            records = cursor.fetchone()
+            print(f"here's the fetched record for {species} with the lowest IVs: {records}")
             return records
         except Exception as e:
             print(e)
@@ -191,7 +224,7 @@ def generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_ph
 def parse_pokebot_message(*args):
     message = args[0]
     if message.content.startswith("Encountered a"):
-        print("pokebot shiny or anti-shiny detected")
+        print("\npokebot shiny or anti-shiny detected")
         cursor = sqliteConnection.cursor()
         embed_content_in_dict = message.embeds[0].to_dict()
         fields_list = embed_content_in_dict["fields"]
@@ -233,18 +266,32 @@ def parse_pokebot_message(*args):
         ## Message ID
         message_id = message.id
 
-        print(f"species: {species}")
-        try:
-            current_alpha = check_current_alpha(species)
-            new_alpha_species = compare_alpha_species(current_alpha, total_ivs, species)
-            if new_alpha_species:
-                print(f"NEW ALPHA FOUND: {species} with {total_ivs} IVs")
-        except:
-            print("Exception in checking database. Ignore this message if it's building the database")
+        #print(f"species: {species}")
+        #try:
+        #    current_alpha = check_current_alpha(species)
+        #    new_alpha_species = compare_alpha_species(current_alpha, total_ivs, species)
+        #    if new_alpha_species:
+        #        print(f"NEW ALPHA FOUND: {species} with {total_ivs} IVs")
+        #except:
+        #    print("Exception in checking database. Ignore this message if it's building the database")
 
         generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_phase_encounters, total_phase_encounters, phase_same_pokemon_streak, message_id)
 
-        return total_ivs
+        current_alpha = check_current_alpha(species)
+        new_alpha = compare_alpha_species(current_alpha, message_id)
+        #current_stinker = check_current_stinker(species)
+        #new_stinker = compare_stinker_species(current_stinker, message_id)
+        if new_alpha:
+            print("alpha")
+            return "alpha"
+        current_stinker = check_current_stinker(species)
+        new_stinker = compare_stinker_species(current_stinker, message_id)
+        if new_stinker:
+            print("stinker")
+            return "stinker"
+
+
+        #return total_ivs
 
     else:
         pass
