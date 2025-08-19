@@ -31,11 +31,16 @@ async def on_message(message):
         return
     if message.author.id == (int(target_user_1)):
         print('Pokebot message detected')
-        parse_response = parse_pokebot_message(message)
+        #parse_response = parse_pokebot_message(message)
+        #parse_response, new_species_found, new_species, species, total_ivs = parse_pokebot_message(message)
+        parse_response, new_species_found, species, total_ivs = parse_pokebot_message(message)
+        if new_species_found:
+            await message.channel.send(f"New species discovered! {species}")
+            return
         if parse_response == "alpha":
-            await message.channel.send("New alpha found!")
+            await message.channel.send(f"New alpha {species} found!")
         if parse_response == "stinker":
-            await message.channel.send("New stinker found!")
+            await message.channel.send(f"New stinker {species} found!")
 
         #total_ivs = parse_pokebot_message(message)
         #current_highest_iv = check_highest_iv()
@@ -58,7 +63,7 @@ async def database_rebuild(interaction):
     await interaction.response.defer()
     async for message in channel.history(limit=10000):
         if message.author.id == (int(target_user_1)):
-            from_db_rebuild = True
+            #from_db_rebuild = True
             parse_pokebot_message(message)
 
     await interaction.followup.send("Pokebot database has been successfully updated!")
@@ -138,18 +143,24 @@ def compare_lowest_iv(current_lowest_iv, total_ivs):
 
 
 def compare_alpha_species(current_alpha, message_id):
-    current_alpha_id = int(current_alpha[7])
-    #print(f"current message id: {message_id}")
-    #print(f"current alpha id: {current_alpha_id}")
-    if message_id == current_alpha_id:
-        print("New Alpha Found!")
-        return True
+    try:
+        current_alpha_id = int(current_alpha[7])
+        #print(f"current message id: {message_id}")
+        #print(f"current alpha id: {current_alpha_id}")
+        if message_id == current_alpha_id:
+            print("New Alpha Found!")
+            return True
+    except Exception as e:
+        print("Alpha for this species likely doesn't exist")
 
 def compare_stinker_species(current_stinker, message_id):
-    current_stinker_id = int(current_stinker[7])
-    if message_id == current_stinker_id:
-        print("New Stinker Found!")
-        return True
+    try:
+        current_stinker_id = int(current_stinker[7])
+        if message_id == current_stinker_id:
+            print("New Stinker Found!")
+            return True
+    except Exception as e:
+            print("Stinker for this species likely doesn't exist")
 
 def check_current_alpha(species):
     with sqlite3.connect("pokebot.db") as conn:
@@ -172,6 +183,38 @@ def check_current_stinker(species):
             records = cursor.fetchone()
             print(f"here's the fetched record for {species} with the lowest IVs: {records}")
             return records
+        except Exception as e:
+            print(e)
+
+def new_species_check(species):
+    with sqlite3.connect("pokebot.db") as conn:
+        cursor = conn.cursor()
+        sqlite_select_query = f"""SELECT * FROM pokebot WHERE species = '{species}'"""
+        try:
+            records = cursor.execute(sqlite_select_query)
+            records = cursor.fetchall()
+
+            ## return either true or false: were there any specie entries found
+            ## IF LENGTH OF RECORDS == 1 THEN NEW SPECIES FOUND
+            print(records)
+            counter = 0
+            for record in records:
+                counter += 1
+                #counter += 1
+                #if counter < 1:
+                #    return "Unexpected out of bounds"
+                #if counter :
+                    #print(f"New species found! {species}")
+                #    return True
+                #if counter > 1:
+                #    return False
+                #else:
+                #    print("unexpected error in new_species_check")
+            if counter < 2:
+                print(f"New species discovered! {species}")
+                return True
+            if counter >=2:
+                return False
         except Exception as e:
             print(e)
 
@@ -281,14 +324,19 @@ def parse_pokebot_message(*args):
         new_alpha = compare_alpha_species(current_alpha, message_id)
         #current_stinker = check_current_stinker(species)
         #new_stinker = compare_stinker_species(current_stinker, message_id)
+
+        new_species_found = new_species_check(species)
+        #new_species = False
+        #if new_species_found:
+        #    new_species = species
         if new_alpha:
             print("alpha")
-            return "alpha"
+            return "alpha", new_species_found, species, total_ivs
         current_stinker = check_current_stinker(species)
         new_stinker = compare_stinker_species(current_stinker, message_id)
         if new_stinker:
             print("stinker")
-            return "stinker"
+            return "stinker", new_species_found, species, total_ivs
 
 
         #return total_ivs
