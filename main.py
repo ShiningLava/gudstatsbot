@@ -31,14 +31,18 @@ async def on_message(message):
         return
     if message.author.id == (int(target_user_1)):
         print('Pokebot message detected')
-        #parse_response = parse_pokebot_message(message)
-        #parse_response, new_species_found, new_species, species, total_ivs = parse_pokebot_message(message)
         parse_response, new_species_found, species, total_ivs, new_hero, new_zero = parse_pokebot_message(message)
         if new_species_found:
-            #await message.channel.send(f"New species discovered! {species}")
             total_species = total_species_in_dex()
-            await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386")
-            return
+            if new_hero:
+                await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386\nNew hero found: {species} with {total_ivs} IVs")
+                return
+            if new_zero:
+                await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386\nNew zero found: {species} with {total_ivs} IVs")
+                return
+            else:
+                await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386")
+                return
         if new_hero:
             await message.channel.send(f"New Hero found! {species} with {total_ivs} IVs!")
             return
@@ -50,17 +54,6 @@ async def on_message(message):
         if parse_response == "stinker":
             await message.channel.send(f"New stinker {species} found!")
 
-        #total_ivs = parse_pokebot_message(message)
-        #current_highest_iv = check_highest_iv()
-        #new_highest_iv = compare_highest_iv(current_highest_iv, total_ivs)
-        #if new_highest_iv:
-        #    await message.channel.send('New highest IV pokemon recorded')
-
-        #current_lowest_iv = check_lowest_iv()
-        #new_lowest_iv = compare_lowest_iv(current_lowest_iv, total_ivs)
-        #if new_lowest_iv:
-        #    await message.channel.send('New lowest IV pokemon recorded :(')
-
 @tree.command(
     name="database_rebuild",
     description="Rebuild the Pokebot database",
@@ -71,7 +64,6 @@ async def database_rebuild(interaction):
     await interaction.response.defer()
     async for message in channel.history(limit=10000):
         if message.author.id == (int(target_user_1)):
-            #from_db_rebuild = True
             parse_pokebot_message(message)
 
     await interaction.followup.send("Pokebot database has been successfully updated!")
@@ -105,7 +97,6 @@ def total_species_in_dex():
         try:
             cursor.execute(sqlite_select_query)
             records = cursor.fetchall()
-            #return records
             encountered_species_list = []
             for record in records:
                 species = record[0]
@@ -139,21 +130,6 @@ def check_lowest_iv():
         except:
             pass
 
-#def compare_highest_iv(current_highest_iv, total_ivs):
-#    current_highest_shiny_dict = current_highest_iv[0]
-#    formatted_current_highest_iv = current_highest_shiny_dict[1]
-#    if int(total_ivs) > int(formatted_current_highest_iv):
-#        print("NEW HIGHEST IV FOUND!")
-#        return True
-
-#def compare_lowest_iv(current_lowest_iv, total_ivs):
-#    current_lowest_shiny_dict = current_lowest_iv[0]
-#    formatted_current_lowest_iv = current_lowest_shiny_dict[1]
-#    if int(total_ivs) < int(formatted_current_lowest_iv):
-#        print("New lowest IV found :(")
-#        return True
-
-
 def compare_highest_iv(current_highest_iv, message_id):
     try:
         current_highest_iv_dict = current_highest_iv[0]
@@ -163,7 +139,6 @@ def compare_highest_iv(current_highest_iv, message_id):
             return True
     except Exception as e:
         print(e)
-        #print("Current highest likely doesn't exist yet")
 
 def compare_lowest_iv(current_lowest_iv, message_id):
     try:
@@ -174,13 +149,10 @@ def compare_lowest_iv(current_lowest_iv, message_id):
             return True
     except Exception as e:
         print(e)
-        #print("Current lowest likely doesn't exist yet")
 
 def compare_alpha_species(current_alpha, message_id):
     try:
         current_alpha_id = int(current_alpha[7])
-        #print(f"current message id: {message_id}")
-        #print(f"current alpha id: {current_alpha_id}")
         if message_id == current_alpha_id:
             print("New Alpha Found!")
             return True
@@ -227,23 +199,9 @@ def new_species_check(species):
         try:
             records = cursor.execute(sqlite_select_query)
             records = cursor.fetchall()
-
-            ## return either true or false: were there any specie entries found
-            ## IF LENGTH OF RECORDS == 1 THEN NEW SPECIES FOUND
-            #print(records)
             counter = 0
             for record in records:
                 counter += 1
-                #counter += 1
-                #if counter < 1:
-                #    return "Unexpected out of bounds"
-                #if counter :
-                    #print(f"New species found! {species}")
-                #    return True
-                #if counter > 1:
-                #    return False
-                #else:
-                #    print("unexpected error in new_species_check")
             if counter < 2:
                 print(f"New species discovered! {species}")
                 return True
@@ -265,7 +223,6 @@ def add_pokebot_entry(conn, entry):
     cur = conn.cursor()
     cur.execute(sql, entry)
     conn.commit()
-    # get the id of the last inserted row
     return cur.lastrowid
 
 def generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_phase_encounters, total_phase_encounters, phase_same_pokemon_streak, message_id):
@@ -300,15 +257,17 @@ def generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_ph
 
 def parse_pokebot_message(*args):
     message = args[0]
-    if message.content.startswith("Encountered a"):
+    if message.content.startswith("Encountered a") or message.content.startswith("Received a"):
         print("\npokebot shiny or anti-shiny detected")
         cursor = sqliteConnection.cursor()
         embed_content_in_dict = message.embeds[0].to_dict()
         fields_list = embed_content_in_dict["fields"]
+
         ## Extract 'Shiny Value'
         extracted_shiny_value_dict = fields_list[0]
         shiny_value = extracted_shiny_value_dict["value"]
         print(f"Shiny Value: {shiny_value}")
+
         ## Extract Total IVs
         extracted_total_ivs_dict = fields_list[1]
         total_ivs = extracted_total_ivs_dict["name"]
@@ -316,49 +275,44 @@ def parse_pokebot_message(*args):
         for character in 'IVs() ':
             total_ivs = total_ivs.replace(character, '')
         print(f"Total IVs: {total_ivs}")
+
         ## Extract Held Item
         extracted_held_item_dict = fields_list[2]
         held_item = extracted_held_item_dict["value"]
         print(f"Held Item: {held_item}")
+
         ## Extract Species
         extracted_species_dict = fields_list[3]
         species = extracted_species_dict["name"]
         ## Trim excess data from species
         species = species.replace(" Encounters", "")
         print(f"Species: {species}")
+
         ## Extract Target Phase Encounters
         extracted_target_phase_encounters_dict = fields_list[4]
         target_phase_encounters = extracted_target_phase_encounters_dict["value"]
         print(f"Target Phase Encounters: {target_phase_encounters}")
+
         ## Extract Total Phase Encounters
         extracted_total_phase_encounters_dict = fields_list[5]
         total_phase_encounters = extracted_total_phase_encounters_dict["value"]
         print(f"Total Phase Encounters: {total_phase_encounters}")
+
         ## Extract Phase Same Pokémon Streak
         extracted_phase_same_pokemon_streak_dict = fields_list[8]
         phase_same_pokemon_streak = extracted_phase_same_pokemon_streak_dict["value"]
         ## Trim excess data from Phase Same Pokémon Streak
         phase_same_pokemon_streak = phase_same_pokemon_streak.replace(" were encountered in a row!", "")
+
         ## Receiving User
+
         ## Message ID
         message_id = message.id
-
-        #print(f"species: {species}")
-        #try:
-        #    current_alpha = check_current_alpha(species)
-        #    new_alpha_species = compare_alpha_species(current_alpha, total_ivs, species)
-        #    if new_alpha_species:
-        #        print(f"NEW ALPHA FOUND: {species} with {total_ivs} IVs")
-        #except:
-        #    print("Exception in checking database. Ignore this message if it's building the database")
 
         generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_phase_encounters, total_phase_encounters, phase_same_pokemon_streak, message_id)
 
         current_alpha = check_current_alpha(species)
         new_alpha = compare_alpha_species(current_alpha, message_id)
-        #current_stinker = check_current_stinker(species)
-        #new_stinker = compare_stinker_species(current_stinker, message_id)
-
         current_highest_iv = check_highest_iv()
         print(f"current_highest_iv: {current_highest_iv}")
         new_hero = compare_highest_iv(current_highest_iv, message_id)
@@ -367,25 +321,12 @@ def parse_pokebot_message(*args):
         new_zero = compare_lowest_iv(current_lowest_iv, message_id)
 
         new_species_found = new_species_check(species)
-        #new_species = False
-        #if new_species_found:
-        #    new_species = species
-
-        #if new_hero:
-        #    print("NEW HERO")
-
         if new_alpha:
-            #print("alpha")
             return "alpha", new_species_found, species, total_ivs, new_hero, new_zero
         current_stinker = check_current_stinker(species)
         new_stinker = compare_stinker_species(current_stinker, message_id)
         if new_stinker:
-            #print("stinker")
             return "stinker", new_species_found, species, total_ivs, new_hero, new_zero
-
-
-        #return total_ivs
-
     else:
         pass
 
