@@ -1,13 +1,24 @@
 # gudstatsbot
-discord bot for checking pokebot stats
-
-## Notes
-GSB is not yet finished and ready for production. 
+discord bot for keeping track of Discord notifications for the Gen 3 Pokebot Project.
 
 ## Setup
 1. Clone the repository
-2. add your `token` and `guild_id` to config.json
-3. Establish the virtual environment
-4. Install the requirements
-5. Run the bot
+   `cd ~`
+   `git clone ...`
+3. add your `token`, `guild_id`, `target_user_1 (User ID for Pokebot)`, and `target_channel (Channel ID for the channel Pokebot posts in)` to config.json
+   `token` can be found by:
+   `guild_id` can be found by:
+   `target_user_1` can be found by:
+   `target_channel` can be found by:
+4. Establish the virtual environment
+   `source bot-env/bin/activate`
+6. Install the requirements
+   `pip install -r requirements.txt`
+7. Run the bot
+   `python3 main.py`
+
+
+## Usage Examples
+How to enable bot on reboot
+`sudo crontab -e` and enter at the bottom of the file: `@reboot cd /home/<user>/gudstatsbot && bot-env/bin/python3 main.py`. Make sure to replace `<user>` with your user
 
