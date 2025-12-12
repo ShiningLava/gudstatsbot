@@ -22,3 +22,10 @@ discord bot for keeping track of Discord notifications for the Gen 3 Pokebot Pro
 How to enable bot on reboot
 `sudo crontab -e` and enter at the bottom of the file: `@reboot cd /home/<user>/gudstatsbot && bot-env/bin/python3 main.py`. Make sure to replace `<user>` with your user
 
+
+## To-Do
+- research PokeAPI integration
+- create achievements (all pokemon caught before first gym, pikachu found on all possible routes, etc)
+- cleanup reused code
+- add functionality for custom database searches
+- add functionality for alphas/stinkers/zeros/heros per user, per discord channel, possibly global
