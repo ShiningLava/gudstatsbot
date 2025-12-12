@@ -99,7 +99,8 @@ async def custom_db_search(inter: discord.Interaction, species: str | None,
 			  phase_encounters: str | None,
 			  phase_same_pkmn_streak: str | None,
 			  receiving_user: str | None,
-			  message_id: str | None,):
+			  message_id: str | None,
+			  order_by: str | None):
     """
     Custom database search
 
@@ -110,14 +111,41 @@ async def custom_db_search(inter: discord.Interaction, species: str | None,
     column: str
         The column to echo
     """
-    await inter.response.send_message(species,
-				     total_ivs,
-				     shiny_value,
-				     held_item,
-				     phase_encounters,
-				     phase_same_pkmn_streak,
-				     receiving__user,
-				     message_id)
+    arguments_dict = {"species": species, "total_ivs": total_ivs, "held_item": held_item,
+		     "shiny_value": shiny_value, "phase_encounters": phase_encounters,
+		     "phase_same_pkmn_streak": phase_same_pkmn_streak, 
+		     "receiving_user": receiving_user, "order_by": order_by}
+    user_sql_options_list = []
+    for key in arguments_dict:
+        if not arguments_dict[key] == None:
+            user_sql_options_list.append(f"{key} = '{arguments_dict[key]}'")
+    sql_list_formatted_1 = ' AND '.join(map(str, user_sql_options_list))
+    #sql_list_formatted_2 = sql_list_formatted_1.replace(' ', 'AND')
+    user_where_string = f"WHERE {sql_list_formatted_1}"
+    #for item in user_sql_options_list:
+    #    user_where_string = user_where_string + 
+
+    with sqlite3.connect("pokebot.db") as conn:
+        cursor = conn.cursor()
+        sqlite_select_query = f"SELECT * FROM pokebot {user_where_string} ORDER BY total_ivs DESC"
+        try:
+            cursor.execute(sqlite_select_query)
+            size = 10
+            records = cursor.fetchmany(size)
+        except Exception as e:
+            print(e)
+            pass
+
+#    await inter.response.send_message(species,
+#				     total_ivs,
+#				     shiny_value,
+#				     held_item,
+#				     phase_encounters,
+#				     phase_same_pkmn_streak,
+#				     receiving__user,
+#				     message_id)
+
+    await inter.response.send_message(records)
 
 @custom_db_search.autocomplete("total_ivs")
 async def column_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
