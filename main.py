@@ -180,9 +180,13 @@ async def custom_db_search(inter: discord.Interaction,
 #				     message_id)
 
     try:
-        await inter.response.send_message(records)
-    except:
-        await inter.response.send_message("Database Error")
+        #await inter.response.send_message(f"Database query: {sqlite_select_query}\n\n{[print(i, end='\n') for i in records]}")
+        await inter.response.send_message(f"Database query: {sqlite_select_query}\n\n{"\n\n".join(repr(x) for x in records)}")
+        #await inter.response.send_message(f"Database query: {sqlite_select_query}\n\n{records}")
+        #await inter.response.send_message(records)
+    except Exception as e:
+        print(e)
+        await inter.response.send_message("database error")
 
 @custom_db_search.autocomplete("total_ivs")
 async def column_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
