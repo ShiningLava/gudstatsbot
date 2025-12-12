@@ -90,6 +90,41 @@ async def lowest_iv(interaction):
     lowest_iv_in_db = check_lowest_iv()
     await interaction.followup.send(f"Here's the lowest IV Pokemon: {lowest_iv_in_db}")
 
+
+@tree.command()
+async def custom_db_search(inter: discord.Interaction, species: str | None,
+			  total_ivs: str | None,
+			  shiny_value: str | None,
+			  held_item: str | None,
+			  phase_encounters: str | None,
+			  phase_same_pkmn_streak: str | None,
+			  receiving_user: str | None,
+			  message_id: str | None,):
+    """
+    Custom database search
+
+    Parameters
+    ----------
+    inter: discord.Interaction
+        The interaction object
+    column: str
+        The column to echo
+    """
+    await inter.response.send_message(species,
+				     total_ivs,
+				     shiny_value,
+				     held_item,
+				     phase_encounters,
+				     phase_same_pkmn_streak,
+				     receiving__user,
+				     message_id)
+
+@custom_db_search.autocomplete("total_ivs")
+async def column_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    options = ["species", "total_ivs", "shiny_value", "held_item", "phase_encounters", "phase_same_pkmn_streak", "receiving_user", "message_id"]
+    return [app_commands.Choice(name=option, value=option) for option in options if option.lower().startswith(current.lower())][:25]
+
+
 def total_species_in_dex():
     with sqlite3.connect("pokebot.db") as conn:
         cursor = conn.cursor()
