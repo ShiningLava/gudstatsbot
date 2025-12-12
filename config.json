@@ -1,5 +1,6 @@
 {
   "token" : "",
   "guild_id" : "",
-  "target_user_1" : ""
+  "target_user_1" : "",
+  "target_channel" : ""
 }
