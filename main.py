@@ -97,18 +97,19 @@ async def custom_db_search(inter: discord.Interaction,
 			  total_ivs: str | None,
 			  shiny_value: str | None,
 			  held_item: str | None, held_item_operator: str | None,
-			  phase_encounters: str | None,
+			  phase_encounters: int | None,
 			  phase_same_pkmn_streak: str | None,
 			  receiving_user: str | None,
 			  message_id: str | None,
-			  order_by: str | None,
+			  order_by: str = 'total_ivs',
                           species_operator: str = '=',
                           total_ivs_operator: str = '=',
 			  shiny_value_operator: str = '=',
 			  phase_encounters_operator: str = '=',
 			  phase_same_pkmn_streak_operator: str = '=',
 			  receiving_user_operator: str = '=',
-			  message_id_operator: str = '=',):
+			  message_id_operator: str = '=',
+                          order_by_operator: str = 'DESC',):
     """
     Custom database search
 
@@ -120,24 +121,13 @@ async def custom_db_search(inter: discord.Interaction,
         The column to echo
     """
 
-
-    #species_operator = "="
-    #total_ivs_operator = "="
-    #shiny_value_operator = "="
-    #held_item_operator = "="
-    #phase_encounters_operator = "="
-    #phase_same_pkmn_streak_operator = "="
-    #receiving_user_operator = "="
-    #message_id_operator = "="
-
     arguments_dict = {"species": species,
 		     "total_ivs": total_ivs,
 		     "held_item": held_item,
 		     "shiny_value": shiny_value,
 		     "phase_encounters": phase_encounters,
 		     "phase_same_pkmn_streak": phase_same_pkmn_streak,
-		     "receiving_user": receiving_user,
-		     "order_by": order_by}
+		     "receiving_user": receiving_user}
 
     arguments_operators_dict = {"species_operator": species_operator,
 				"total_ivs_operator": total_ivs_operator,
@@ -146,6 +136,9 @@ async def custom_db_search(inter: discord.Interaction,
 				"phase_encounters_operator": phase_encounters_operator,
 				"phase_same_pkmn_streat_operator": phase_same_pkmn_streak_operator,
 				"receiving_user_operator": receiving_user_operator}
+
+    order_dict = {"order_by": order_by,
+                 "order_by_operator": order_by_operator}
 
     user_sql_options_list = []
     for key in arguments_dict:
@@ -161,7 +154,10 @@ async def custom_db_search(inter: discord.Interaction,
 
     with sqlite3.connect("pokebot.db") as conn:
         cursor = conn.cursor()
-        sqlite_select_query = f"SELECT * FROM pokebot {user_where_string} ORDER BY total_ivs DESC"
+        #print(arguments_dict[order_by])
+        #print(arguments_operators_dict[order_by_operator])
+        #sqlite_select_query = f"SELECT * FROM pokebot {user_where_string} ORDER BY total_ivs DESC"
+        sqlite_select_query = f"SELECT * FROM pokebot {user_where_string} ORDER BY {order_dict['order_by']} {order_dict['order_by_operator']}"
         try:
             cursor.execute(sqlite_select_query)
             size = 10
@@ -338,7 +334,7 @@ def generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_ph
                 print("Message ID already found in database. Skipping entry...")
                 return
             pokebot_entries = [
-                (species, total_ivs, shiny_value, held_item, target_phase_encounters, phase_same_pokemon_streak, 'user', message_id)
+                (species, total_ivs, shiny_value, held_item, total_phase_encounters, phase_same_pokemon_streak, 'user', message_id)
             ]
             pokebot_table_sql = """ CREATE TABLE pokebot(species VARCHAR(30),
                 total_ivs INT,
@@ -399,8 +395,13 @@ def parse_pokebot_message(*args):
 
         ## Extract Total Phase Encounters
         extracted_total_phase_encounters_dict = fields_list[5]
-        total_phase_encounters = extracted_total_phase_encounters_dict["value"]
+        total_phase_encounters_raw = extracted_total_phase_encounters_dict["value"]
+        ## Trim Total Phase Encounters
+        total_phase_encounters_string = total_phase_encounters_raw.split(' ', 1)[0]
+        total_phase_encounters_rate_string = total_phase_encounters_raw.split(' ', 1)[1]
+        total_phase_encounters = int(total_phase_encounters_string.replace(",", ""))
         print(f"Total Phase Encounters: {total_phase_encounters}")
+        print(f"Total Phase Encounters Hourly Rate: {total_phase_encounters_rate_string}")
 
         ## Extract Phase Same Pokémon Streak
         extracted_phase_same_pokemon_streak_dict = fields_list[8]
