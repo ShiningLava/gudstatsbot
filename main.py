@@ -147,16 +147,10 @@ async def custom_db_search(inter: discord.Interaction,
             key_operator = arguments_operators_dict[key_operator_string]
             user_sql_options_list.append(f"{key} {key_operator} '{arguments_dict[key]}'")
     sql_list_formatted_1 = ' AND '.join(map(str, user_sql_options_list))
-    #sql_list_formatted_2 = sql_list_formatted_1.replace(' ', 'AND')
     user_where_string = f"WHERE {sql_list_formatted_1}"
-    #for item in user_sql_options_list:
-    #    user_where_string = user_where_string + 
 
     with sqlite3.connect("pokebot.db") as conn:
         cursor = conn.cursor()
-        #print(arguments_dict[order_by])
-        #print(arguments_operators_dict[order_by_operator])
-        #sqlite_select_query = f"SELECT * FROM pokebot {user_where_string} ORDER BY total_ivs DESC"
         sqlite_select_query = f"SELECT * FROM pokebot {user_where_string} ORDER BY {order_dict['order_by']} {order_dict['order_by_operator']}"
         try:
             cursor.execute(sqlite_select_query)
@@ -166,20 +160,8 @@ async def custom_db_search(inter: discord.Interaction,
             print(e)
             pass
 
-#    await inter.response.send_message(species,
-#				     total_ivs,
-#				     shiny_value,
-#				     held_item,
-#				     phase_encounters,
-#				     phase_same_pkmn_streak,
-#				     receiving__user,
-#				     message_id)
-
     try:
-        #await inter.response.send_message(f"Database query: {sqlite_select_query}\n\n{[print(i, end='\n') for i in records]}")
         await inter.response.send_message(f"Database query: {sqlite_select_query}\n\n{"\n\n".join(repr(x) for x in records)}")
-        #await inter.response.send_message(f"Database query: {sqlite_select_query}\n\n{records}")
-        #await inter.response.send_message(records)
     except Exception as e:
         print(e)
         await inter.response.send_message("database error")
