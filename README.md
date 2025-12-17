@@ -27,5 +27,5 @@ How to enable bot on reboot
 - research PokeAPI integration
 - create achievements (all pokemon caught before first gym, pikachu found on all possible routes, etc)
 - cleanup reused code
-- add functionality for custom database searches
+- use embedded messages when returning database entries to Discord chats to reduce ugly output
 - add functionality for alphas/stinkers/zeros/heros per user, per discord channel, possibly global
