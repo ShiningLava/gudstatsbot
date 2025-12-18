@@ -36,6 +36,13 @@ async def on_message(message):
         if pb_message_dict:
             generate_pokebot_entry(pb_message_dict)
             new_alpha, new_hero, new_stinker, new_zero = alpha_stinker_zero_hero_check(pb_message_dict)
+            species = pb_message_dict['species']
+            total_ivs = pb_message_dict['total_ivs']
+            new_species_found = new_species_check(pb_message_dict['species'])
+
+#        if new_alpha:
+#            return "alpha", new_species_found, species, total_ivs, new_hero, new_zero
+
             if new_species_found:
                 total_species = total_species_in_dex()
                 if new_hero:
@@ -53,9 +60,11 @@ async def on_message(message):
             if new_zero:
                 await message.channel.send(f"New Zero found... {species} with {total_ivs} IVs...")
                 return
-            if parse_response == "alpha":
+            #if parse_response == "alpha":
+            if new_alpha:
                 await message.channel.send(f"New alpha {species} found!")
-            if parse_response == "stinker":
+            #if parse_response == "stinker":
+            if new_stinker:
                 await message.channel.send(f"New stinker {species} found!")
 
 @tree.command(
