@@ -175,11 +175,40 @@ async def custom_db_search(inter: discord.Interaction,
         print(e)
         await inter.response.send_message("database error")
 
-@custom_db_search.autocomplete("total_ivs")
+@custom_db_search.autocomplete("species_operator")
 async def column_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
-    options = ["species", "total_ivs", "shiny_value", "held_item", "phase_encounters", "phase_same_pkmn_streak", "receiving_user", "message_id"]
+    options = ["!=", "="]
     return [app_commands.Choice(name=option, value=option) for option in options if option.lower().startswith(current.lower())][:25]
 
+@custom_db_search.autocomplete("total_ivs_operator")
+async def column_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    options = [">", ">=", "=", "!=", "<", "<="]
+    return [app_commands.Choice(name=option, value=option) for option in options if option.lower().startswith(current.lower())][:25]
+
+@custom_db_search.autocomplete("shiny_value_operator")
+async def column_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    options = [">", ">=", "=", "!=",  "<", "<="]
+    return [app_commands.Choice(name=option, value=option) for option in options if option.lower().startswith(current.lower())][:25]
+
+@custom_db_search.autocomplete("phase_encounters_operator")
+async def column_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    options = [">", ">=", "=", "!=", "<", "<="]
+    return [app_commands.Choice(name=option, value=option) for option in options if option.lower().startswith(current.lower())][:25]
+
+@custom_db_search.autocomplete("phase_same_pkmn_streak_operator")
+async def column_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    options = [">", ">=", "=", "!=",  "<", "<="]
+    return [app_commands.Choice(name=option, value=option) for option in options if option.lower().startswith(current.lower())][:25]
+
+@custom_db_search.autocomplete("receiving_user_operator")
+async def column_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    options = ["!=", "="]
+    return [app_commands.Choice(name=option, value=option) for option in options if option.lower().startswith(current.lower())][:25]
+
+@custom_db_search.autocomplete("held_item_operator")
+async def column_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+    options = ["!=", "="]
+    return [app_commands.Choice(name=option, value=option) for option in options if option.lower().startswith(current.lower())][:25]
 
 def total_species_in_dex():
     with sqlite3.connect("pokebot.db") as conn:
