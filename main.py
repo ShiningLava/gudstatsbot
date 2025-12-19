@@ -31,7 +31,6 @@ async def on_message(message):
         return
     if message.author.id == (int(target_user_1)):
         print('Pokebot message detected')
-        #parse_response, new_species_found, species, total_ivs, new_hero, new_zero = parse_pokebot_message(message)
         pb_message_dict = parse_pokebot_message(message)
         if pb_message_dict:
             generate_pokebot_entry(pb_message_dict)
@@ -39,10 +38,6 @@ async def on_message(message):
             species = pb_message_dict['species']
             total_ivs = pb_message_dict['total_ivs']
             new_species_found = new_species_check(pb_message_dict['species'])
-
-#        if new_alpha:
-#            return "alpha", new_species_found, species, total_ivs, new_hero, new_zero
-
             if new_species_found:
                 total_species = total_species_in_dex()
                 if new_hero:
@@ -60,10 +55,8 @@ async def on_message(message):
             if new_zero:
                 await message.channel.send(f"New Zero found... {species} with {total_ivs} IVs...")
                 return
-            #if parse_response == "alpha":
             if new_alpha:
                 await message.channel.send(f"New alpha {species} found!")
-            #if parse_response == "stinker":
             if new_stinker:
                 await message.channel.send(f"New stinker {species} found!")
 
@@ -338,7 +331,6 @@ def add_pokebot_entry(conn, entry):
     conn.commit()
     return cur.lastrowid
 
-#def generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_phase_encounters, total_phase_encounters, phase_same_pokemon_streak, message_id):
 def generate_pokebot_entry(pb_message_dict):
     try:
         with sqlite3.connect("pokebot.db") as conn:
@@ -446,31 +438,8 @@ def parse_pokebot_message(*args):
         message_id = message.id
         pb_message_dict['message_id'] = message_id
 
-        #generate_pokebot_entry(shiny_value, total_ivs, held_item, species, target_phase_encounters, total_phase_encounters, phase_same_pkmn_streak, message_id)
-
-#        current_alpha = check_current_alpha(species)
-#        new_alpha = compare_alpha_species(current_alpha, message_id)
-#        current_highest_iv = check_highest_iv()
-#        print(f"current_highest_iv: {current_highest_iv}")
-#        new_hero = compare_highest_iv(current_highest_iv, message_id)
-#        current_lowest_iv = check_lowest_iv()
-#        print(f"current_lowest_iv: {current_lowest_iv}")
-#        new_zero = compare_lowest_iv(current_lowest_iv, message_id)
-
-
-        #print(pb_message_dict)
-        #alpha_stinker_zero_hero_check(pb_message_dict)
-
         return pb_message_dict
 
-        ## Temporarily disabled to get other logic working 
-#        new_species_found = new_species_check(species)
-#        if new_alpha:
-#            return "alpha", new_species_found, species, total_ivs, new_hero, new_zero
-#        current_stinker = check_current_stinker(species)
-#        new_stinker = compare_stinker_species(current_stinker, message_id)
-#        if new_stinker:
-#            return "stinker", new_species_found, species, total_ivs, new_hero, new_zero
     else:
         pass
 
