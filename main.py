@@ -210,6 +210,29 @@ async def column_autocomplete(interaction: discord.Interaction, current: str) ->
     options = ["!=", "="]
     return [app_commands.Choice(name=option, value=option) for option in options if option.lower().startswith(current.lower())][:25]
 
+@tree.command(
+    name="user_string_test",
+    description="temp command to test extracting specific string",
+    guild=discord.Object(id=guild_id),
+)
+async def user_string_test(interaction):
+    channel = client.get_channel(int(target_channel))
+    await interaction.response.defer()
+    string_unformatted = """Encountered a shiny ✨ Torchic ✨!
+📢 <@223895172675534848>
+{'footer': {'text': 'ID: chance is smelly but is also 500k encounters ahead of me | Pokémon Emerald (E)\nPokéBot Gen3 20250714.0'}, 'image': {'width': 240, 'url': 'https://cdn.discordapp.com/attachments/1261431186836947056/1397742200066146415/embed.gif?ex=6882d45d&is=688182dd&hm=6ed55fc61673f264de20753ac36b37d3474c241dc611a29291642af10e0dd9db&', 'proxy_url': 'https://media.discordapp.net/attachments/1261431186836947056/1397742200066146415/embed.gif?ex=6882d45d&is=688182dd&hm=6ed55fc61673f264de20753ac36b37d3474c241dc611a29291642af10e0dd9db&', 'placeholder_version': 1, 'placeholder': 'AAgCBYAAAAAAAAAAAAAAAAAAAAAA', 'height': 160, 'flags': 32, 'description': None, 'content_type': 'image/gif'}, 'thumbnail': {'width': 128, 'url': 'https://cdn.discordapp.com/attachments/1261431186836947056/1397742199764029531/thumb.png?ex=6882d45d&is=688182dd&hm=e83f73867379fa132c73c57277b80676ba7a998bf1eb0f8cb0532f4041340385&', 'proxy_url': 'https://media.discordapp.net/attachments/1261431186836947056/1397742199764029531/thumb.png?ex=6882d45d&is=688182dd&hm=e83f73867379fa132c73c57277b80676ba7a998bf1eb0f8cb0532f4041340385&', 'placeholder_version': 1, 'placeholder': '42qCBQAjeZWJZXJc91V/MvjlCLd4mHN7eA==', 'height': 128, 'flags': 0, 'description': None, 'content_type': 'image/png'}, 'fields': [{'value': '3', 'name': 'Shiny Value', 'inline': False}, {'value': '```╔═══╤═══╤═══╤═══╤═══╤═══╗\n║HP │ATK│DEF│SPA│SPD│SPE║\n╠═══╪═══╪═══╪═══╪═══╪═══╣\n║ 0 │ 2 │12 │19 │23 │20 ║\n╚═══╧═══╧═══╧═══╧═══╧═══╝```', 'name': 'IVs (76)', 'inline': False}, {'value': 'None', 'name': 'Held item', 'inline': False}, {'value': '7,103 (1✨)', 'name': 'Torchic Encounters', 'inline': False}, {'value': '7,103', 'name': 'Torchic Phase Encounters', 'inline': False}, {'value': '7,103 (26/h)', 'name': 'Phase Encounters', 'inline': False}}"""
+    user_string_initiator_index = string_unformatted.find("<@")
+    if user_string_initiator_index != -1:
+        print(f"Substring found at index {user_string_initiator_index}")
+    else:
+        print("Substring not found.")
+
+    
+
+    extracted_string = string_unformatted[user_string_initiator_index + 2:user_string_initiator_index + 20]
+
+    await interaction.followup.send(f"Extracted String: {extracted_string}")
+
 def total_species_in_dex():
     with sqlite3.connect("pokebot.db") as conn:
         cursor = conn.cursor()
@@ -375,7 +398,7 @@ def generate_pokebot_entry(pb_message_dict):
                 pb_message_dict['held_item'],
                 pb_message_dict['total_phase_encounters'],
                 pb_message_dict['phase_same_pkmn_streak'],
-                'user',
+                pb_message_dict['user'],
                 pb_message_dict['message_id'])
             ]
             pokebot_table_sql = """ CREATE TABLE pokebot(species VARCHAR(30),
@@ -461,7 +484,16 @@ def parse_pokebot_message(*args):
         pb_message_dict['phase_same_pkmn_streak'] = phase_same_pkmn_streak
 
         ## Receiving User
-        #pb_message_dict[user] = user
+        user_string_initiator_index = message.content.find("<@")
+        if user_string_initiator_index != -1:
+            print(f"Substring found at index {user_string_initiator_index}")
+            extracted_string = message.content[user_string_initiator_index + 2:user_string_initiator_index + 20]
+            print(f"Extracted user_id: {extracted_string}")
+            pb_message_dict['user'] = extracted_string
+        else:
+            print("Substring not found.")
+            print(message.content)
+            pb_message_dict['user'] = 'user'
 
         ## Message ID
         message_id = message.id
