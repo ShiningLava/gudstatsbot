@@ -34,7 +34,7 @@ async def on_message(message):
         pb_message_dict = parse_pokebot_message(message)
         if pb_message_dict:
             generate_pokebot_entry(pb_message_dict)
-            ## Need to differentiate personal vs global zero/hero/stinker/alpha
+            ## Need to differentiate personal vs global zero/hero/stinker
             new_personal_alpha, new_global_alpha, new_hero, new_stinker, new_zero = alpha_stinker_zero_hero_check(pb_message_dict)
             species = pb_message_dict['species']
             total_ivs = pb_message_dict['total_ivs']
@@ -56,6 +56,9 @@ async def on_message(message):
                 await message.channel.send(f"New Zero found... {species} with {total_ivs} IVs...")
             if new_global_alpha:
                 await message.channel.send(f"New global alpha {species} found!")
+
+                ## Take priority over personal alpha
+                return
             if new_personal_alpha:
                 await message.channel.send(f"New personal alpha {species} found!")
             if new_stinker:
