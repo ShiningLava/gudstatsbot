@@ -27,14 +27,15 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
-    if message.author == client.user:
-        return
+    #if message.author == client.user:
+    #    return
     if message.author.id == (int(target_user_1)):
         print('Pokebot message detected')
         pb_message_dict = parse_pokebot_message(message)
         if pb_message_dict:
             generate_pokebot_entry(pb_message_dict)
-            new_alpha, new_hero, new_stinker, new_zero = alpha_stinker_zero_hero_check(pb_message_dict)
+            ## Need to differentiate personal vs global zero/hero/stinker/alpha
+            new_personal_alpha, new_global_alpha, new_hero, new_stinker, new_zero = alpha_stinker_zero_hero_check(pb_message_dict)
             species = pb_message_dict['species']
             total_ivs = pb_message_dict['total_ivs']
             new_species_found = new_species_check(pb_message_dict['species'])
@@ -51,12 +52,12 @@ async def on_message(message):
                     return
             if new_hero:
                 await message.channel.send(f"New Hero found! {species} with {total_ivs} IVs!")
-                return
             if new_zero:
                 await message.channel.send(f"New Zero found... {species} with {total_ivs} IVs...")
-                return
-            if new_alpha:
-                await message.channel.send(f"New alpha {species} found!")
+            if new_global_alpha:
+                await message.channel.send(f"New global alpha {species} found!")
+            if new_personal_alpha:
+                await message.channel.send(f"New personal alpha {species} found!")
             if new_stinker:
                 await message.channel.send(f"New stinker {species} found!")
 
@@ -233,6 +234,29 @@ async def user_string_test(interaction):
 
     await interaction.followup.send(f"Extracted String: {extracted_string}")
 
+@tree.command(
+    name="pokebot_test",
+    description="temp command to test message responses",
+    guild=discord.Object(id=guild_id),
+)
+async def pokebot_test(interaction):
+    channel = client.get_channel(int(target_channel))
+    await interaction.response.defer()
+    string_unformatted = """Encountered a shiny ✨ Torchic ✨!
+📢 <@223895172675534848>
+{'footer': {'text': 'ID: chance is smelly but is also 500k encounters ahead of me | Pokémon Emerald (E)\nPokéBot Gen3 20250714.0'}, 'image': {'width': 240, 'url': 'https://cdn.discordapp.com/attachments/1261431186836947056/1397742200066146415/embed.gif?ex=6882d45d&is=688182dd&hm=6ed55fc61673f264de20753ac36b37d3474c241dc611a29291642af10e0dd9db&', 'proxy_url': 'https://media.discordapp.net/attachments/1261431186836947056/1397742200066146415/embed.gif?ex=6882d45d&is=688182dd&hm=6ed55fc61673f264de20753ac36b37d3474c241dc611a29291642af10e0dd9db&', 'placeholder_version': 1, 'placeholder': 'AAgCBYAAAAAAAAAAAAAAAAAAAAAA', 'height': 160, 'flags': 32, 'description': None, 'content_type': 'image/gif'}, 'thumbnail': {'width': 128, 'url': 'https://cdn.discordapp.com/attachments/1261431186836947056/1397742199764029531/thumb.png?ex=6882d45d&is=688182dd&hm=e83f73867379fa132c73c57277b80676ba7a998bf1eb0f8cb0532f4041340385&', 'proxy_url': 'https://media.discordapp.net/attachments/1261431186836947056/1397742199764029531/thumb.png?ex=6882d45d&is=688182dd&hm=e83f73867379fa132c73c57277b80676ba7a998bf1eb0f8cb0532f4041340385&', 'placeholder_version': 1, 'placeholder': '42qCBQAjeZWJZXJc91V/MvjlCLd4mHN7eA==', 'height': 128, 'flags': 0, 'description': None, 'content_type': 'image/png'}, 'fields': [{'value': '3', 'name': 'Shiny Value', 'inline': False}, {'value': '```╔═══╤═══╤═══╤═══╤═══╤═══╗\n║HP │ATK│DEF│SPA│SPD│SPE║\n╠═══╪═══╪═══╪═══╪═══╪═══╣\n║ 0 │ 2 │12 │19 │23 │20 ║\n╚═══╧═══╧═══╧═══╧═══╧═══╝```', 'name': 'IVs (76)', 'inline': False}, {'value': 'None', 'name': 'Held item', 'inline': False}, {'value': '7,103 (1✨)', 'name': 'Torchic Encounters', 'inline': False}, {'value': '7,103', 'name': 'Torchic Phase Encounters', 'inline': False}, {'value': '7,103 (26/h)', 'name': 'Phase Encounters', 'inline': False}}"""
+    #user_string_initiator_index = string_unformatted.find("<@")
+    #if user_string_initiator_index != -1:
+    #    print(f"Substring found at index {user_string_initiator_index}")
+    #else:
+    #    print("Substring not found.")
+
+    #extracted_string = string_unformatted[user_string_initiator_index + 2:user_string_initiator_index + 20]
+
+    await interaction.followup.send(f"{string_unformatted}")
+
+
+
 def total_species_in_dex():
     with sqlite3.connect("pokebot.db") as conn:
         cursor = conn.cursor()
@@ -293,14 +317,46 @@ def compare_lowest_iv(current_lowest_iv, message_id):
     except Exception as e:
         print(e)
 
-def compare_alpha_species(current_alpha, message_id):
+def compare_alpha_species(current_personal_alpha, current_global_alpha, message_id, user):
+
+    new_global_alpha = False
+    new_personal_alpha = False
+
+    # New Global Alpha Check
     try:
-        current_alpha_id = int(current_alpha[7])
-        if message_id == current_alpha_id:
-            print("New Alpha Found!")
-            return True
+        current_global_alpha_id = int(current_global_alpha[7])
+        if message_id == current_global_alpha_id:
+            print("New Global Alpha Found!")
+            new_global_alpha = True
+            #return True
     except Exception as e:
+        print(e)
         print("Alpha for this species likely doesn't exist")
+
+    # New Personal Alpha Check
+    #try:
+    #    current_personal_alpha_id = int(current_personal_alpha[7])
+    #    current_alpha_receiving_user = int(current_personal_alpha[6])
+    #    if message_id == current_alpha_id and user == current_alpha_receiving_user:
+    #        print("New Personal Alpha Found!")
+    #        new_personal_alpha = True
+    #        #return True
+    #except Exception as e:
+    #    print("Alpha for this species likely doesn't exist")
+
+    try:
+        current_personal_alpha_id = int(current_personal_alpha[7])
+        #current_alpha_receiving_user = int(current_personal_alpha[6])
+        if message_id == current_personal_alpha_id:
+            print("New Personal Alpha Found!")
+            new_personal_alpha = True
+            #return True
+    except Exception as e:
+        print(e)
+        print("Alpha for this species likely doesn't exist")
+
+
+    return new_personal_alpha, new_global_alpha
 
 def compare_stinker_species(current_stinker, message_id):
     try:
@@ -311,17 +367,39 @@ def compare_stinker_species(current_stinker, message_id):
     except Exception as e:
             print("Stinker for this species likely doesn't exist")
 
-def check_current_alpha(species):
+def check_current_alpha(pb_message_dict):
+#def check_current_alpha(pb_message_dict):
+    species = pb_message_dict['species']
+    receiving_user = pb_message_dict['user']
+
+    # Global Alpha
     with sqlite3.connect("pokebot.db") as conn:
         cursor = conn.cursor()
         sqlite_select_query = f"""SELECT * FROM pokebot WHERE species = '{species}' ORDER BY total_ivs DESC"""
         try:
-            records = cursor.execute(sqlite_select_query)
-            records = cursor.fetchone()
-            print(f"here's the fetched record for {species} with the highest IVs: {records}")
-            return records
+            current_global_alpha = cursor.execute(sqlite_select_query)
+            current_global_alpha = cursor.fetchone()
+            print(f"here's the fetched record for {species} with the highest IVs: {current_global_alpha}")
+            #return records
         except Exception as e:
             print(e)
+
+    # Personal Alpha
+    with sqlite3.connect("pokebot.db") as conn:
+        cursor = conn.cursor()
+        sqlite_select_query = f"""SELECT * FROM pokebot WHERE species = '{species}' AND receiving_user = {receiving_user} ORDER BY total_ivs DESC"""
+        try:
+            current_personal_alpha = cursor.execute(sqlite_select_query)
+            current_personal_alpha = cursor.fetchone()
+            print(f"here's the fetched record for {species} with the highest IVs for {receiving_user}: {current_personal_alpha}")
+            #return records
+        except Exception as e:
+            print(e)
+            return "error", "error"
+
+    return current_personal_alpha, current_global_alpha
+
+    #return current_global_alpha
 
 def check_current_stinker(species):
     with sqlite3.connect("pokebot.db") as conn:
@@ -355,8 +433,15 @@ def new_species_check(species):
 
 def alpha_stinker_zero_hero_check(pb_message_dict):
     message_id = pb_message_dict['message_id']
-    current_alpha = check_current_alpha(pb_message_dict['species'])
-    new_alpha = compare_alpha_species(current_alpha, message_id)
+    user = pb_message_dict['user']
+
+    ## Need to differentiate personal vs global alpha/stinker/zero/hero
+    #current_alpha = check_current_alpha(pb_message_dict)
+    current_personal_alpha, current_global_alpha = check_current_alpha(pb_message_dict)
+    # Debug messages
+    print(user, current_personal_alpha, current_global_alpha)
+    #new_alpha = compare_alpha_species(current_alpha, message_id)
+    new_personal_alpha, new_global_alpha = compare_alpha_species(current_personal_alpha, current_global_alpha, message_id, user)
     current_highest_iv = check_highest_iv()
     print(f"current_highest_iv: {current_highest_iv}")
     new_hero = compare_highest_iv(current_highest_iv, message_id)
@@ -366,7 +451,7 @@ def alpha_stinker_zero_hero_check(pb_message_dict):
     new_stinker = compare_stinker_species(current_stinker, message_id)
     new_zero = compare_lowest_iv(current_lowest_iv, message_id)
 
-    return new_alpha, new_hero, new_stinker, new_zero
+    return new_personal_alpha, new_global_alpha, new_hero, new_stinker, new_zero
 
 def add_pokebot_entry(conn, entry):
     sql = '''INSERT INTO pokebot(species,
