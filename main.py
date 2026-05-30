@@ -1,3 +1,15 @@
+## To-Do
+## - Add a function that performs the SQL queries, have it use the provided SQL query as a string as well as the desired search results
+## - Add a function that can handle the text for the GSB response that is posted to Discord
+## - Differentiate between personal and global zeros
+## - Differentiate between personal and global heros
+## - Differentiate between personal and global new species
+## - Consider using the **pb_message_dict syntax in functions to unpack the dictionary and reduce the number of variables manually defined
+## - Cleanup variable types when they are declared from the config file instead of when they are used
+## - Add a function that sends identical copies of pokebot posts, use it for debugging
+
+
+
 import discord
 from discord import app_commands
 import sqlite3
@@ -35,14 +47,42 @@ async def on_message(message):
         pb_message_dict = parse_pokebot_message(message)
         if pb_message_dict:
             generate_pokebot_entry(pb_message_dict)
-            ## Need to differentiate personal vs global zero/hero/stinker
+            ## Need to differentiate personal vs global zero/hero
             new_personal_alpha, new_global_alpha, new_hero, new_personal_stinker, new_global_stinker, new_zero = alpha_stinker_zero_hero_check(pb_message_dict)
             species = pb_message_dict['species']
             total_ivs = pb_message_dict['total_ivs']
             new_species_found = new_species_check(pb_message_dict['species'])
+            receiving_user = pb_message_dict['user']
+
+            # WIP for personal vs global new_species check
+            # personal_new_species_found, global_new_species_found = new_species_check(pb_message_dict)
 
 
-            ## Need to add support for individual checks for new_species here
+#            if new_global_species_found:
+#                total_personal_species, total_global_species = total_species_in_dex(pb_message_dict):
+#                if new_hero:
+#                    await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386\nNew hero found: {species} with {total_ivs} IVs")
+#                    return
+#                if new_zero:
+#                    await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386\nNew zero found: {species} with {total_ivs} IVs")
+#                    return
+#                else:
+#                    await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386\n<@{receiving_user}> has discovered a new species: {species}\nTotal Specied for <@{receiving_user}>: {}/386")
+#                    return
+
+#            if new_personal_species_found:
+#                if new_hero:
+#                    await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386\nNew hero found: {species}>
+#                    return
+#                if new_zero:
+#                    await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386\nNew zero found: {species}>
+#                    return
+#                else:
+#                    await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386")
+#                    return
+
+
+            # if new_personal_species_found:
             if new_species_found:
                 total_species = total_species_in_dex()
                 if new_hero:
@@ -278,7 +318,9 @@ async def pokebot_test(interaction):
     await interaction.followup.send(f"{string_unformatted}")
 
 
-
+# Commented out code is to differentiate between personal and global check
+#def total_species_in_dex(pb_message_dict):
+#    receiving_user = pb_message_dict['user']
 def total_species_in_dex():
     with sqlite3.connect("pokebot.db") as conn:
         cursor = conn.cursor()
@@ -454,9 +496,13 @@ def check_current_stinker(pb_message_dict):
     return current_personal_stinker, current_global_stinker
 
 def new_species_check(species):
+#def new_species_check(pb_message_dict):
+    #receiving_user = pb_message_dict['user']
 
     # Need to add support for checking for new species for individuals here
     # need to adjust function to take receiving_user into account
+
+    # Check for global new species
     with sqlite3.connect("pokebot.db") as conn:
         cursor = conn.cursor()
         sqlite_select_query = f"""SELECT * FROM pokebot WHERE species = '{species}'"""
@@ -469,10 +515,35 @@ def new_species_check(species):
             if counter < 2:
                 print(f"New species discovered! {species}")
                 return True
+                # global_new_species_found = True
             if counter >=2:
                 return False
+                # global_new_species_found = False
         except Exception as e:
             print(e)
+
+#    # Check for personal new_species
+#    with sqlite3.connect("pokebot.db") as conn:
+#        cursor = conn.cursor()
+#        sqlite_select_query = f"""SELECT * FROM pokebot WHERE species = '{species} AND receiving_user = {receiving_user}'"""
+#        try:
+#            records = cursor.execute(sqlite_select_query)
+#            records = cursor.fetchall()
+#            counter = 0
+#            for record in records:
+#                counter += 1
+#            if counter < 2:
+#                print(f"New species discovered! {species}")
+#                return True
+#                personal_new_species_found = True
+#            if counter >=2:
+#                return False
+#                personal_new_species_found = False
+#        except Exception as e:
+#            print(e)
+
+# return personal_new_species_found, global_new_species_found
+
 
 def alpha_stinker_zero_hero_check(pb_message_dict):
     message_id = pb_message_dict['message_id']
