@@ -27,6 +27,7 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
+    # Below is commented out temporarily, this is an important check against the bot responding to itself infinitely
     #if message.author == client.user:
     #    return
     if message.author.id == (int(target_user_1)):
@@ -39,6 +40,9 @@ async def on_message(message):
             species = pb_message_dict['species']
             total_ivs = pb_message_dict['total_ivs']
             new_species_found = new_species_check(pb_message_dict['species'])
+
+
+            ## Need to add support for individual checks for new_species here
             if new_species_found:
                 total_species = total_species_in_dex()
                 if new_hero:
@@ -56,8 +60,6 @@ async def on_message(message):
                 await message.channel.send(f"New Zero found... {species} with {total_ivs} IVs...")
             if new_global_alpha:
                 await message.channel.send(f"New global alpha {species} found!")
-
-                ## Take priority over personal alpha
                 return
             if new_personal_alpha:
                 await message.channel.send(f"New personal alpha {species} found!")
@@ -178,7 +180,6 @@ async def custom_db_search(inter: discord.Interaction,
             pass
 
     try:
-        #await inter.response.send_message(f"Database query: {sqlite_select_query}\n\n{"\n\n".join(repr(x) for x in records)}")
         records_results_formatted = {}
         counter = 0
         for x in records:
@@ -199,7 +200,6 @@ async def custom_db_search(inter: discord.Interaction,
         string_formatted = f""
         for x,y in records_results_formatted.items():
             string_formatted += f"{y}\n\n"
-            #print(records_results_formatted)
 
         await inter.response.send_message(f"Database query: {sqlite_select_query}\n\n{string_formatted}")
     except Exception as e:
@@ -350,18 +350,15 @@ def compare_alpha_species(current_personal_alpha, current_global_alpha, message_
         if message_id == current_global_alpha_id:
             print("New Global Alpha Found!")
             new_global_alpha = True
-            #return True
     except Exception as e:
         print(e)
         print("Alpha for this species likely doesn't exist")
 
     try:
         current_personal_alpha_id = int(current_personal_alpha[7])
-        #current_alpha_receiving_user = int(current_personal_alpha[6])
         if message_id == current_personal_alpha_id:
             print("New Personal Alpha Found!")
             new_personal_alpha = True
-            #return True
     except Exception as e:
         print(e)
         print("Alpha for this species likely doesn't exist")
@@ -381,7 +378,6 @@ def compare_stinker_species(current_personal_stinker, current_global_stinker, me
         if message_id == current_global_stinker_id:
             print("New Global Stinker Found!")
             new_global_stinker = True
-            #return True
     except Exception as e:
         print(e)
         print("Stinker for this species likely doesn't exist")
@@ -391,7 +387,6 @@ def compare_stinker_species(current_personal_stinker, current_global_stinker, me
         if message_id == current_personal_stinker_id:
             print("New Personal Stinker Found!")
             new_personal_stinker = True
-            #return True
     except Exception as e:
         print(e)
         print("Stinker for this species likely doesn't exist")
@@ -399,19 +394,7 @@ def compare_stinker_species(current_personal_stinker, current_global_stinker, me
 
     return new_personal_stinker, new_global_stinker
 
-
-
-#def compare_stinker_species(current_stinker, message_id):
-#    try:
-#        current_stinker_id = int(current_stinker[7])
-#        if message_id == current_stinker_id:
-#            print("New Stinker Found!")
-#            return True
-#    except Exception as e:
-#            print("Stinker for this species likely doesn't exist")
-
 def check_current_alpha(pb_message_dict):
-#def check_current_alpha(pb_message_dict):
     species = pb_message_dict['species']
     receiving_user = pb_message_dict['user']
 
@@ -423,7 +406,6 @@ def check_current_alpha(pb_message_dict):
             current_global_alpha = cursor.execute(sqlite_select_query)
             current_global_alpha = cursor.fetchone()
             print(f"here's the fetched record for {species} with the highest IVs: {current_global_alpha}")
-            #return records
         except Exception as e:
             print(e)
 
@@ -435,14 +417,11 @@ def check_current_alpha(pb_message_dict):
             current_personal_alpha = cursor.execute(sqlite_select_query)
             current_personal_alpha = cursor.fetchone()
             print(f"here's the fetched record for {species} with the highest IVs for {receiving_user}: {current_personal_alpha}")
-            #return records
         except Exception as e:
             print(e)
             return "error", "error"
 
     return current_personal_alpha, current_global_alpha
-
-    #return current_global_alpha
 
 def check_current_stinker(pb_message_dict):
     species = pb_message_dict['species']
@@ -456,7 +435,6 @@ def check_current_stinker(pb_message_dict):
             current_global_stinker = cursor.execute(sqlite_select_query)
             current_global_stinker = cursor.fetchone()
             print(f"here's the fetched record for {species} with the lowest IVs: {current_global_stinker}")
-            #return records
         except Exception as e:
             print(e)
 
@@ -475,19 +453,10 @@ def check_current_stinker(pb_message_dict):
 
     return current_personal_stinker, current_global_stinker
 
-#def check_current_stinker(species):
-#    with sqlite3.connect("pokebot.db") as conn:
-#        cursor = conn.cursor()
-#        sqlite_select_query = f"""SELECT * FROM pokebot WHERE species = '{species}' ORDER BY total_ivs ASC"""
-#        try:
-#            records = cursor.execute(sqlite_select_query)
-#            records = cursor.fetchone()
-#            print(f"here's the fetched record for {species} with the lowest IVs: {records}")
-#            return records
-#        except Exception as e:
-#            print(e)
-
 def new_species_check(species):
+
+    # Need to add support for checking for new species for individuals here
+    # need to adjust function to take receiving_user into account
     with sqlite3.connect("pokebot.db") as conn:
         cursor = conn.cursor()
         sqlite_select_query = f"""SELECT * FROM pokebot WHERE species = '{species}'"""
@@ -523,9 +492,7 @@ def alpha_stinker_zero_hero_check(pb_message_dict):
     print(f"current_lowest_iv: {current_lowest_iv}")
     ## Global vs Personal Stinker
     current_personal_stinker, current_global_stinker = check_current_stinker(pb_message_dict)
-    #current_stinker = check_current_stinker(pb_message_dict['species'])
     new_personal_stinker, new_global_stinker = compare_stinker_species(current_personal_stinker, current_global_stinker, message_id, user)
-    #new_stinker = compare_stinker_species(current_stinker, message_id)
     #new_personal_zero, new_global_zero = compare_lowest_iv(current_global_lowest_iv, current_personal_lowest_iv, message_id)
     new_zero = compare_lowest_iv(current_lowest_iv, message_id)
 
