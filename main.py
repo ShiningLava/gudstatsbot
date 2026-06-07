@@ -705,9 +705,8 @@ def generate_pokebot_entry(pb_message_dict):
     except sqlite3.Error as e:
         print("error opening database", e)
 
-def parse_pokebot_message(*args):
-    message = args[0]
-    
+def parse_pokebot_message(message):
+
     ## Debug
     print("Message:", message)
     print("Message content:", message.content)
@@ -715,7 +714,6 @@ def parse_pokebot_message(*args):
 
     if message.content.startswith("Encountered a") or message.content.startswith("Received a"):
         print("\npokebot shiny or anti-shiny detected")
-        cursor = sqliteConnection.cursor()
         embed_content_in_dict = message.embeds[0].to_dict()
         fields_list = embed_content_in_dict["fields"]
 
