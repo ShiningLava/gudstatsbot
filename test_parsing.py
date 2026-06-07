@@ -425,6 +425,37 @@ def test_hero_tie_detected(bot):
 
 
 # ---------------------------------------------------------------------------
+# personal_new_species_check -> bool (per-user new species, vs global)
+# ---------------------------------------------------------------------------
+# Full 18-digit ids: parse_pokebot_message extracts the mention with a fixed
+# 18-char window, so short ids (e.g. "111") would store a trailing '>'. Real
+# Discord ids are 18 digits, which the window captures exactly.
+USER_A = "111111111111111111"
+USER_B = "222222222222222222"
+
+
+def test_personal_new_species_when_global_exists(bot):
+    """Two users have caught Lapras (so it's not a new GLOBAL species), but it's
+    still each user's first -> personal-new-but-not-global-new."""
+    record(bot, species="Lapras", total_ivs="100", user=USER_A, message_id=1)
+    record(bot, species="Lapras", total_ivs="120", user=USER_B, message_id=2)
+
+    assert bot.new_species_check("Lapras") is False               # 2 global rows
+    assert bot.personal_new_species_check("Lapras", USER_B) is True   # userB's first
+
+
+def test_personal_new_species_first_ever(bot):
+    record(bot, species="Snorlax", total_ivs="100", user=USER_A, message_id=1)
+    assert bot.personal_new_species_check("Snorlax", USER_A) is True
+
+
+def test_personal_not_new_on_second_personal(bot):
+    record(bot, species="Snorlax", total_ivs="100", user=USER_A, message_id=1)
+    record(bot, species="Snorlax", total_ivs="120", user=USER_A, message_id=2)
+    assert bot.personal_new_species_check("Snorlax", USER_A) is False
+
+
+# ---------------------------------------------------------------------------
 # on_message: the crash regression + a happy-path end-to-end
 # ---------------------------------------------------------------------------
 def test_on_message_handles_non_encounter_without_crashing(bot):

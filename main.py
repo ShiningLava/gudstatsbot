@@ -106,6 +106,8 @@ async def on_message(message):
             if new_species_check(species):
                 total_species = total_species_in_dex()
                 await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386")
+            elif personal_new_species_check(species, receiving_user):
+                await message.channel.send(f"<@{receiving_user}> discovered their first {species}!")
 
             # Hero (highest IV overall) -- new record or tie
             if result["global_hero"] == "record":
@@ -573,6 +575,15 @@ def new_species_check(species):
 #            print(e)
 
 # return personal_new_species_found, global_new_species_found
+
+
+def personal_new_species_check(species, receiving_user):
+    records = run_query(
+        "SELECT * FROM pokebot WHERE species = ? AND receiving_user = ?",
+        (species, receiving_user))
+    if records is None:
+        return
+    return len(records) < 2
 
 
 def _extreme_status(total_ivs, message_id, receiving_user, *, highest, personal):
