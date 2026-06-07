@@ -24,9 +24,9 @@ with open('config.json', 'r') as g:
     config = json.load(g)
 
 token = config['token']
-guild_id = config['guild_id']
-target_user_1 = config['target_user_1']
-target_channel = config['target_channel']
+guild_id = int(config['guild_id'])
+target_user_1 = int(config['target_user_1'])
+target_channel = int(config['target_channel'])
 sqliteConnection = sqlite3.connect('pokebot.db')
 cursor = sqliteConnection.cursor()
 
@@ -38,15 +38,15 @@ tree = app_commands.CommandTree(client)
 @client.event
 async def on_ready():
     print(f'Logged in as {client.user} (ID: {client.user.id})')
-    tree.copy_global_to(guild=discord.Object(id=(int(guild_id))))
-    await tree.sync(guild=discord.Object(id=(int(guild_id))))
+    tree.copy_global_to(guild=discord.Object(id=guild_id))
+    await tree.sync(guild=discord.Object(id=guild_id))
 
 @client.event
 async def on_message(message):
     # Below is commented out temporarily, this is an important check against the bot responding to itself infinitely
     #if message.author == client.user:
     #    return
-    if message.author.id == (int(target_user_1)):
+    if message.author.id == target_user_1:
         print('Pokebot message detected')
         pb_message_dict = parse_pokebot_message(message)
 
@@ -124,10 +124,10 @@ async def on_message(message):
     guild=discord.Object(id=guild_id),
 )
 async def database_rebuild(interaction):
-    channel = client.get_channel(int(target_channel))
+    channel = client.get_channel(target_channel)
     await interaction.response.defer()
     async for message in channel.history(limit=10000):
-        if message.author.id == (int(target_user_1)):
+        if message.author.id == target_user_1:
             pb_message_dict = parse_pokebot_message(message)
             if pb_message_dict:
                 generate_pokebot_entry(pb_message_dict)
@@ -141,7 +141,7 @@ async def database_rebuild(interaction):
     guild=discord.Object(id=guild_id),
 )
 async def highest_iv(interaction):
-    channel = client.get_channel(int(target_channel))
+    channel = client.get_channel(target_channel)
     await interaction.response.defer()
     highest_iv_in_db = check_highest_iv()
     await interaction.followup.send(f"Here's the highest IV Pokemon: {highest_iv_in_db}")
@@ -152,7 +152,7 @@ async def highest_iv(interaction):
     guild=discord.Object(id=guild_id),
 )
 async def lowest_iv(interaction):
-    channel = client.get_channel(int(target_channel))
+    channel = client.get_channel(target_channel)
     await interaction.response.defer()
     lowest_iv_in_db = check_lowest_iv()
     await interaction.followup.send(f"Here's the lowest IV Pokemon: {lowest_iv_in_db}")
@@ -278,7 +278,7 @@ custom_db_search.autocomplete("held_item_operator")(_operator_autocomplete(_EQUA
     guild=discord.Object(id=guild_id),
 )
 async def user_string_test(interaction):
-    channel = client.get_channel(int(target_channel))
+    channel = client.get_channel(target_channel)
     await interaction.response.defer()
     string_unformatted = """Encountered a shiny ✨ Torchic ✨!
 📢 <@223895172675534848>
@@ -303,7 +303,7 @@ async def user_string_test(interaction):
 )
 async def pokebot_test(interaction):
 #async def pokebot_embed_test(ctx: commands.Context):
-    channel = client.get_channel(int(target_channel))
+    channel = client.get_channel(target_channel)
     await interaction.response.defer()
 
 
