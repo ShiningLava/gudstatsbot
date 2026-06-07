@@ -367,12 +367,12 @@ def test_generate_entry_is_idempotent(bot):
 def test_first_encounter_is_alpha_hero_zero_globally_and_personally(bot):
     pb = record(bot, species="Bulbasaur", total_ivs="100",
                 user="223895172675534848", message_id=4001)
-    (personal_alpha, global_alpha, hero,
-     personal_stinker, global_stinker, zero) = bot.alpha_stinker_zero_hero_check(pb)
+    result = bot.alpha_stinker_zero_hero_check(pb)
 
-    assert global_alpha and personal_alpha
-    assert hero and zero
-    assert global_stinker and personal_stinker
+    assert result["global_alpha"] and result["personal_alpha"]
+    assert result["global_hero"] == "record" and result["personal_hero"] == "record"
+    assert result["global_stinker"] and result["personal_stinker"]
+    assert result["global_zero"] == "record" and result["personal_zero"] == "record"
     assert bot.new_species_check("Bulbasaur") is True
 
 
@@ -381,14 +381,47 @@ def test_lower_second_encounter_is_stinker_and_zero_not_hero(bot):
            user="223895172675534848", message_id=5001)
     pb2 = record(bot, species="Bulbasaur", total_ivs="50",
                  user="223895172675534848", message_id=5002)
-    (personal_alpha, global_alpha, hero,
-     personal_stinker, global_stinker, zero) = bot.alpha_stinker_zero_hero_check(pb2)
+    result = bot.alpha_stinker_zero_hero_check(pb2)
 
-    assert not global_alpha and not personal_alpha
-    assert not hero                 # not the highest IV anymore
-    assert zero                     # is the lowest IV overall
-    assert global_stinker and personal_stinker
+    assert not result["global_alpha"]
+    assert result["global_hero"] is None        # not the highest IV anymore
+    assert result["global_stinker"]             # is the lowest IV for this species
+    assert result["global_zero"] == "record"    # is the lowest IV overall
     assert bot.new_species_check("Bulbasaur") is False
+
+
+def test_personal_hero_independent_of_global(bot):
+    """userA's new personal high is a personal Hero record even though a higher
+    row exists globally under userB."""
+    record(bot, species="Pidgey", total_ivs="150", user="111", message_id=1)
+    record(bot, species="Rattata", total_ivs="200", user="222", message_id=2)
+    pb3 = record(bot, species="Pidgey", total_ivs="160", user="111", message_id=3)
+    result = bot.alpha_stinker_zero_hero_check(pb3)
+
+    assert result["personal_hero"] == "record"  # beats userA's prior 150
+    assert result["global_hero"] is None         # 200 (userB) is higher globally
+
+
+def test_personal_zero_independent_of_global(bot):
+    """userA's new personal low is a personal Zero record even though a lower
+    row exists globally under userB."""
+    record(bot, species="Pidgey", total_ivs="100", user="111", message_id=1)
+    record(bot, species="Rattata", total_ivs="20", user="222", message_id=2)
+    pb3 = record(bot, species="Pidgey", total_ivs="50", user="111", message_id=3)
+    result = bot.alpha_stinker_zero_hero_check(pb3)
+
+    assert result["personal_zero"] == "record"  # below userA's prior 100
+    assert result["global_zero"] is None         # 20 (userB) is lower globally
+
+
+def test_hero_tie_detected(bot):
+    """A second encounter equal to the prior max ties (not records) the Hero."""
+    record(bot, species="Eevee", total_ivs="100", user="111", message_id=1)
+    pb2 = record(bot, species="Eevee", total_ivs="100", user="111", message_id=2)
+    result = bot.alpha_stinker_zero_hero_check(pb2)
+
+    assert result["global_hero"] == "tie"   # equals prior max -> tie, not record
+    assert result["global_zero"] == "tie"   # also equals prior min
 
 
 # ---------------------------------------------------------------------------
@@ -427,9 +460,10 @@ def test_on_message_new_species_announces_and_records(bot):
     asyncio.run(bot.on_message(msg))
 
     assert len(fetch_all_rows()) == 1
-    assert len(channel.sent) == 1
-    announcement = channel.sent[0][0][0]   # first positional arg of channel.send
-    assert "Bulbasaur" in announcement
+    # First-encounter now sends MULTIPLE messages (new species + hero/zero/alpha/stinker).
+    assert len(channel.sent) >= 1
+    sent_text = " ".join(call[0][0] for call in channel.sent)  # first positional arg of each send
+    assert "Bulbasaur" in sent_text
 
 
 # ---------------------------------------------------------------------------
@@ -448,8 +482,7 @@ def test_no_mention_personal_alpha_stinker_path_executes(bot):
                 user=None, message_id=8001)
     assert pb["user"] == "user"   # no mention -> default literal
 
-    (personal_alpha, global_alpha, hero,
-     personal_stinker, global_stinker, zero) = bot.alpha_stinker_zero_hero_check(pb)
+    result = bot.alpha_stinker_zero_hero_check(pb)
 
     # Direct proof the personal queries no longer error out:
     current_personal_alpha, _ = bot.check_current_alpha(pb)
@@ -458,9 +491,9 @@ def test_no_mention_personal_alpha_stinker_path_executes(bot):
     assert current_personal_stinker != "error"
 
     # And the personal flags are now truthy (they were False before the fix):
-    assert personal_alpha
-    assert personal_stinker
-    assert global_alpha and global_stinker
+    assert result["personal_alpha"]
+    assert result["personal_stinker"]
+    assert result["global_alpha"] and result["global_stinker"]
 
 
 # ---------------------------------------------------------------------------

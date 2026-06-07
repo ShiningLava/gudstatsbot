@@ -68,10 +68,9 @@ async def on_message(message):
         if pb_message_dict:
             generate_pokebot_entry(pb_message_dict)
             ## Need to differentiate personal vs global zero/hero
-            new_personal_alpha, new_global_alpha, new_hero, new_personal_stinker, new_global_stinker, new_zero = alpha_stinker_zero_hero_check(pb_message_dict)
+            result = alpha_stinker_zero_hero_check(pb_message_dict)
             species = pb_message_dict['species']
             total_ivs = pb_message_dict['total_ivs']
-            new_species_found = new_species_check(pb_message_dict['species'])
             receiving_user = pb_message_dict['user']
 
             # WIP for personal vs global new_species check
@@ -103,30 +102,39 @@ async def on_message(message):
 
 
             # if new_personal_species_found:
-            if new_species_found:
+            # New species (global)
+            if new_species_check(species):
                 total_species = total_species_in_dex()
-                if new_hero:
-                    await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386\nNew hero found: {species} with {total_ivs} IVs")
-                    return
-                if new_zero:
-                    await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386\nNew zero found: {species} with {total_ivs} IVs")
-                    return
-                else:
-                    await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386")
-                    return
-            if new_hero:
+                await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386")
+
+            # Hero (highest IV overall) -- new record or tie
+            if result["global_hero"] == "record":
                 await message.channel.send(f"New Hero found! {species} with {total_ivs} IVs!")
-            if new_zero:
+            elif result["global_hero"] == "tie":
+                await message.channel.send(f"{species} tied the global Hero record at {total_ivs} IVs!")
+            if result["personal_hero"] == "record":
+                await message.channel.send(f"New personal Hero for <@{receiving_user}>! {species} with {total_ivs} IVs!")
+            elif result["personal_hero"] == "tie":
+                await message.channel.send(f"<@{receiving_user}> tied their personal Hero record: {species} at {total_ivs} IVs!")
+
+            # Zero (lowest IV overall) -- new record or tie
+            if result["global_zero"] == "record":
                 await message.channel.send(f"New Zero found... {species} with {total_ivs} IVs...")
-            if new_global_alpha:
+            elif result["global_zero"] == "tie":
+                await message.channel.send(f"{species} tied the global Zero record at {total_ivs} IVs...")
+            if result["personal_zero"] == "record":
+                await message.channel.send(f"New personal Zero for <@{receiving_user}>... {species} with {total_ivs} IVs...")
+            elif result["personal_zero"] == "tie":
+                await message.channel.send(f"<@{receiving_user}> tied their personal Zero record: {species} at {total_ivs} IVs...")
+
+            # Alpha (species highest) / Stinker (species lowest)
+            if result["global_alpha"]:
                 await message.channel.send(f"New global alpha {species} found!")
-                return
-            if new_personal_alpha:
+            if result["personal_alpha"]:
                 await message.channel.send(f"New personal alpha {species} found!")
-            if new_global_stinker:
+            if result["global_stinker"]:
                 await message.channel.send(f"New global stinker {species} found!")
-                return
-            if new_personal_stinker:
+            if result["personal_stinker"]:
                 await message.channel.send(f"New personal stinker {species} found!")
 
 
@@ -437,26 +445,6 @@ def check_highest_iv():
 def check_lowest_iv():
     return run_query("SELECT * FROM pokebot ORDER BY total_ivs ASC", fetch="many1")
 
-def compare_highest_iv(current_highest_iv, message_id):
-    try:
-        current_highest_iv_dict = current_highest_iv[0]
-        current_highest_id = int(current_highest_iv_dict[7])
-        if message_id == current_highest_id:
-            print("New Hero found!")
-            return True
-    except Exception as e:
-        print(e)
-
-def compare_lowest_iv(current_lowest_iv, message_id):
-    try:
-        current_lowest_iv_dict = current_lowest_iv[0]
-        current_lowest_id = int(current_lowest_iv_dict[7])
-        if message_id == current_lowest_id:
-            print("New Zero found...")
-            return True
-    except Exception as e:
-        print(e)
-
 def compare_alpha_species(current_personal_alpha, current_global_alpha, message_id, user):
 
     new_global_alpha = False
@@ -587,29 +575,55 @@ def new_species_check(species):
 # return personal_new_species_found, global_new_species_found
 
 
+def _extreme_status(total_ivs, message_id, receiving_user, *, highest, personal):
+    """'record' if this encounter beats the prior best/worst, 'tie' if it equals
+    it, else None. Scoped to one user when personal=True. Used for hero/zero."""
+    agg = "MAX" if highest else "MIN"
+    if personal:
+        prior = run_query(
+            f"SELECT {agg}(total_ivs) FROM pokebot WHERE receiving_user = ? AND message_id != ?",
+            (receiving_user, message_id), fetch="one")
+    else:
+        prior = run_query(
+            f"SELECT {agg}(total_ivs) FROM pokebot WHERE message_id != ?",
+            (message_id,), fetch="one")
+    if prior is None:
+        return None
+    prior_extreme = prior[0]
+    if prior_extreme is None:
+        return "record"          # no other rows yet -> this is the first/extreme
+    new_iv = int(total_ivs)
+    if new_iv == prior_extreme:
+        return "tie"
+    if (new_iv > prior_extreme) if highest else (new_iv < prior_extreme):
+        return "record"
+    return None
+
+
 def alpha_stinker_zero_hero_check(pb_message_dict):
     message_id = pb_message_dict['message_id']
     user = pb_message_dict['user']
+    total_ivs = pb_message_dict['total_ivs']
 
     current_personal_alpha, current_global_alpha = check_current_alpha(pb_message_dict)
-
-    # Debug messages
     print(user, current_personal_alpha, current_global_alpha)
+    new_personal_alpha, new_global_alpha = compare_alpha_species(
+        current_personal_alpha, current_global_alpha, message_id, user)
 
-    new_personal_alpha, new_global_alpha = compare_alpha_species(current_personal_alpha, current_global_alpha, message_id, user)
-    current_highest_iv = check_highest_iv()
-    print(f"current_highest_iv: {current_highest_iv}")
-    new_hero = compare_highest_iv(current_highest_iv, message_id)
-    #current_personal_lowest_iv, current_global_lowest_iv = check_lowest_iv(user)
-    current_lowest_iv = check_lowest_iv()
-    print(f"current_lowest_iv: {current_lowest_iv}")
-    ## Global vs Personal Stinker
     current_personal_stinker, current_global_stinker = check_current_stinker(pb_message_dict)
-    new_personal_stinker, new_global_stinker = compare_stinker_species(current_personal_stinker, current_global_stinker, message_id, user)
-    #new_personal_zero, new_global_zero = compare_lowest_iv(current_global_lowest_iv, current_personal_lowest_iv, message_id)
-    new_zero = compare_lowest_iv(current_lowest_iv, message_id)
+    new_personal_stinker, new_global_stinker = compare_stinker_species(
+        current_personal_stinker, current_global_stinker, message_id, user)
 
-    return new_personal_alpha, new_global_alpha, new_hero, new_personal_stinker, new_global_stinker, new_zero
+    return {
+        "personal_alpha": new_personal_alpha,
+        "global_alpha": new_global_alpha,
+        "personal_stinker": new_personal_stinker,
+        "global_stinker": new_global_stinker,
+        "personal_hero": _extreme_status(total_ivs, message_id, user, highest=True, personal=True),
+        "global_hero": _extreme_status(total_ivs, message_id, user, highest=True, personal=False),
+        "personal_zero": _extreme_status(total_ivs, message_id, user, highest=False, personal=True),
+        "global_zero": _extreme_status(total_ivs, message_id, user, highest=False, personal=False),
+    }
 
 def generate_pokebot_entry(pb_message_dict):
     existing = run_query(
