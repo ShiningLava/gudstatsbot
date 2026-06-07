@@ -42,9 +42,6 @@ CREATE_POKEBOT_TABLE_SQL = """CREATE TABLE IF NOT EXISTS pokebot(
 
 DB_PATH = "pokebot.db"
 
-sqliteConnection = sqlite3.connect('pokebot.db')
-cursor = sqliteConnection.cursor()
-
 intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
@@ -614,44 +611,29 @@ def alpha_stinker_zero_hero_check(pb_message_dict):
 
     return new_personal_alpha, new_global_alpha, new_hero, new_personal_stinker, new_global_stinker, new_zero
 
-def add_pokebot_entry(conn, entry):
-    sql = '''INSERT INTO pokebot(species,
-            total_ivs,
-            shiny_value,
-            held_item,
-            phase_encounters,
-            phase_same_pkmn_streak,
-            receiving_user,
-            message_id)
-             VALUES(?,?,?,?,?,?,?,?) '''
-    cur = conn.cursor()
-    cur.execute(sql, entry)
-    conn.commit()
-    return cur.lastrowid
-
 def generate_pokebot_entry(pb_message_dict):
-    try:
-        with sqlite3.connect("pokebot.db") as conn:
-            cursor.execute("""SELECT * FROM pokebot WHERE message_id=? """, (pb_message_dict['message_id'],))
-            result = cursor.fetchone()
-            if result:
-                print("Message ID already found in database. Skipping entry...")
-                return
-            pokebot_entries = [
-                (pb_message_dict['species'],
-                pb_message_dict['total_ivs'],
-                pb_message_dict['shiny_value'],
-                pb_message_dict['held_item'],
-                pb_message_dict['total_phase_encounters'],
-                pb_message_dict['phase_same_pkmn_streak'],
-                pb_message_dict['user'],
-                pb_message_dict['message_id'])
-            ]
-            for entry in pokebot_entries:
-                entry_id = add_pokebot_entry(conn, entry)
-                print(f'Created entry with id {entry_id}\n')
-    except sqlite3.Error as e:
-        print("error opening database", e)
+    existing = run_query(
+        "SELECT * FROM pokebot WHERE message_id = ?",
+        (pb_message_dict['message_id'],), fetch="one")
+    if existing:
+        print("Message ID already found in database. Skipping entry...")
+        return
+    entry = (
+        pb_message_dict['species'],
+        pb_message_dict['total_ivs'],
+        pb_message_dict['shiny_value'],
+        pb_message_dict['held_item'],
+        pb_message_dict['total_phase_encounters'],
+        pb_message_dict['phase_same_pkmn_streak'],
+        pb_message_dict['user'],
+        pb_message_dict['message_id'],
+    )
+    entry_id = run_query(
+        """INSERT INTO pokebot(species, total_ivs, shiny_value, held_item,
+            phase_encounters, phase_same_pkmn_streak, receiving_user, message_id)
+            VALUES(?,?,?,?,?,?,?,?)""",
+        entry, fetch="none")
+    print(f'Created entry with id {entry_id}\n')
 
 def parse_pokebot_message(message):
 
@@ -746,11 +728,7 @@ def parse_pokebot_message(message):
         pass
 
 def initial_create_db():
-    try:
-        with sqlite3.connect("pokebot.db") as conn:
-            cursor.execute(CREATE_POKEBOT_TABLE_SQL)
-    except Exception as e:
-        print(e)
+    run_query(CREATE_POKEBOT_TABLE_SQL, fetch="none")
 
 def main():
     initial_create_db()
