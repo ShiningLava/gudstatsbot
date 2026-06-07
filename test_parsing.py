@@ -266,12 +266,12 @@ def test_parse_accepts_received_prefix(bot):
     assert pb["species"] == "Charmander"
 
 
-def test_parse_raises_indexerror_on_short_embed(bot):
-    """Regression: a real captured message (see `user_string_test`) had only 6
-    fields (0-5), but parse_pokebot_message reads fields_list[8] unconditionally
-    and outside any try/except. A short embed therefore raises IndexError
-    straight out of parse -> no DB entry, no reply. This documents the hazard;
-    flip to a graceful skip if/when the bot guards the index.
+def test_parse_short_embed_defaults_streak_to_none(bot):
+    """Regression (Bug 2): a real captured message had only 6 fields (0-5), but
+    parse_pokebot_message used to read fields_list[8] unconditionally and outside
+    any try/except, raising IndexError straight out of parse -> no DB entry, no
+    reply. The index is now guarded: a short embed parses gracefully and
+    phase_same_pkmn_streak defaults to None (NULL is fine for the INT column).
     """
     short_embed = {
         "fields": [
@@ -280,7 +280,7 @@ def test_parse_raises_indexerror_on_short_embed(bot):
             {"name": "Held item", "value": "None"},
             {"name": "Bulbasaur Encounters", "value": "x"},
             {"name": "Bulbasaur Phase Encounters", "value": "1"},
-            {"name": "Phase Encounters", "value": "1 (2/h)"},  # valid, so [8] is the failure
+            {"name": "Phase Encounters", "value": "1 (2/h)"},  # only 6 fields, no [8]
         ]
     }
     msg = FakeMessage(
@@ -288,8 +288,22 @@ def test_parse_raises_indexerror_on_short_embed(bot):
         embed=short_embed,
         message_id=7001,
     )
-    with pytest.raises(IndexError):
-        bot.parse_pokebot_message(msg)
+    pb = bot.parse_pokebot_message(msg)   # must NOT raise
+    assert pb is not None
+    assert pb["species"] == "Bulbasaur"
+    assert pb["phase_same_pkmn_streak"] is None
+
+
+def test_parse_phase_encounters_value_without_space(bot):
+    """Regression (Bug 3): a 'Phase Encounters' value with no space (e.g. '1634',
+    no '(rate/h)' suffix) used to crash parse via split(' ', 1)[1] IndexError.
+    The split is now safe, so it parses and yields the right int.
+    """
+    pb = bot.parse_pokebot_message(
+        build_message(total_phase="1634", message_id=7100)
+    )
+    assert pb is not None
+    assert pb["total_phase_encounters"] == 1634
 
 
 # ---------------------------------------------------------------------------
@@ -416,3 +430,81 @@ def test_on_message_new_species_announces_and_records(bot):
     assert len(channel.sent) == 1
     announcement = channel.sent[0][0][0]   # first positional arg of channel.send
     assert "Bulbasaur" in announcement
+
+
+# ---------------------------------------------------------------------------
+# Bug 4: personal alpha/stinker path when there's no <@mention> (user == 'user')
+# ---------------------------------------------------------------------------
+def test_no_mention_personal_alpha_stinker_path_executes(bot):
+    """Regression (Bug 4): with no <@mention>, parse defaults user to the literal
+    'user'. The personal alpha/stinker SELECTs used to interpolate that unquoted
+    (receiving_user = user) -> 'no such column: user' -> the except returned
+    ('error', 'error'), which the compare helpers silently treated as not-a-record
+    (every personal flag False). With the queries parameterized, the personal path
+    now actually executes: a first such encounter is its own personal alpha AND
+    personal stinker.
+    """
+    pb = record(bot, species="Charizard", total_ivs="100",
+                user=None, message_id=8001)
+    assert pb["user"] == "user"   # no mention -> default literal
+
+    (personal_alpha, global_alpha, hero,
+     personal_stinker, global_stinker, zero) = bot.alpha_stinker_zero_hero_check(pb)
+
+    # Direct proof the personal queries no longer error out:
+    current_personal_alpha, _ = bot.check_current_alpha(pb)
+    current_personal_stinker, _ = bot.check_current_stinker(pb)
+    assert current_personal_alpha != "error"
+    assert current_personal_stinker != "error"
+
+    # And the personal flags are now truthy (they were False before the fix):
+    assert personal_alpha
+    assert personal_stinker
+    assert global_alpha and global_stinker
+
+
+# ---------------------------------------------------------------------------
+# Bug 1: custom_db_search streak filter no longer KeyErrors
+# ---------------------------------------------------------------------------
+class FakeResponse:
+    def __init__(self):
+        self.messages = []
+
+    async def send_message(self, *args, **kwargs):
+        self.messages.append((args, kwargs))
+
+
+class FakeInteraction:
+    def __init__(self):
+        self.response = FakeResponse()
+
+
+def test_custom_db_search_streak_filter_does_not_keyerror(bot):
+    """Regression (Bug 1): the operators dict key was misspelled
+    'phase_same_pkmn_streat_operator', so filtering on phase_same_pkmn_streak
+    KeyError'd on the f"{key}_operator" lookup -- outside the try/except, so the
+    interaction never got a response. With the key corrected, the command runs to
+    completion and always sends exactly one response.
+    """
+    # Seed a row so the query has something to return.
+    record(bot, species="Charizard", total_ivs="100",
+           streak="5 Charizard were encountered in a row!",
+           user="223895172675534848", message_id=8100)
+
+    inter = FakeInteraction()
+    # Pass a phase_same_pkmn_streak value (this is what triggered the KeyError).
+    asyncio.run(
+        bot.custom_db_search.callback(
+            inter,
+            species=None,
+            total_ivs=None,
+            shiny_value=None,
+            held_item=None, held_item_operator="=",
+            phase_encounters=None,
+            phase_same_pkmn_streak="5 Charizard",
+            receiving_user=None,
+            message_id=None,
+        )
+    )
+    # No KeyError -> the interaction got exactly one response.
+    assert len(inter.response.messages) == 1

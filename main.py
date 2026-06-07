@@ -201,7 +201,7 @@ async def custom_db_search(inter: discord.Interaction,
 				"held_item_operator": held_item_operator,
 				"shiny_value_operator": shiny_value_operator,
 				"phase_encounters_operator": phase_encounters_operator,
-				"phase_same_pkmn_streat_operator": phase_same_pkmn_streak_operator,
+				"phase_same_pkmn_streak_operator": phase_same_pkmn_streak_operator,
 				"receiving_user_operator": receiving_user_operator}
 
     order_dict = {"order_by": order_by,
@@ -527,9 +527,9 @@ def check_current_alpha(pb_message_dict):
     # Global Alpha
     with sqlite3.connect("pokebot.db") as conn:
         cursor = conn.cursor()
-        sqlite_select_query = f"""SELECT * FROM pokebot WHERE species = '{species}' ORDER BY total_ivs DESC"""
+        sqlite_select_query = """SELECT * FROM pokebot WHERE species = ? ORDER BY total_ivs DESC"""
         try:
-            current_global_alpha = cursor.execute(sqlite_select_query)
+            current_global_alpha = cursor.execute(sqlite_select_query, (species,))
             current_global_alpha = cursor.fetchone()
             print(f"here's the fetched record for {species} with the highest IVs: {current_global_alpha}")
         except Exception as e:
@@ -538,9 +538,9 @@ def check_current_alpha(pb_message_dict):
     # Personal Alpha
     with sqlite3.connect("pokebot.db") as conn:
         cursor = conn.cursor()
-        sqlite_select_query = f"""SELECT * FROM pokebot WHERE species = '{species}' AND receiving_user = {receiving_user} ORDER BY total_ivs DESC"""
+        sqlite_select_query = """SELECT * FROM pokebot WHERE species = ? AND receiving_user = ? ORDER BY total_ivs DESC"""
         try:
-            current_personal_alpha = cursor.execute(sqlite_select_query)
+            current_personal_alpha = cursor.execute(sqlite_select_query, (species, receiving_user))
             current_personal_alpha = cursor.fetchone()
             print(f"here's the fetched record for {species} with the highest IVs for {receiving_user}: {current_personal_alpha}")
         except Exception as e:
@@ -556,9 +556,9 @@ def check_current_stinker(pb_message_dict):
     # Global Stinker
     with sqlite3.connect("pokebot.db") as conn:
         cursor = conn.cursor()
-        sqlite_select_query = f"""SELECT * FROM pokebot WHERE species = '{species}' ORDER BY total_ivs ASC"""
+        sqlite_select_query = """SELECT * FROM pokebot WHERE species = ? ORDER BY total_ivs ASC"""
         try:
-            current_global_stinker = cursor.execute(sqlite_select_query)
+            current_global_stinker = cursor.execute(sqlite_select_query, (species,))
             current_global_stinker = cursor.fetchone()
             print(f"here's the fetched record for {species} with the lowest IVs: {current_global_stinker}")
         except Exception as e:
@@ -567,9 +567,9 @@ def check_current_stinker(pb_message_dict):
     # Personal Stinker
     with sqlite3.connect("pokebot.db") as conn:
         cursor = conn.cursor()
-        sqlite_select_query = f"""SELECT * FROM pokebot WHERE species = '{species}' AND receiving_user = {receiving_user} ORDER BY total_ivs ASC"""
+        sqlite_select_query = """SELECT * FROM pokebot WHERE species = ? AND receiving_user = ? ORDER BY total_ivs ASC"""
         try:
-            current_personal_stinker = cursor.execute(sqlite_select_query)
+            current_personal_stinker = cursor.execute(sqlite_select_query, (species, receiving_user))
             current_personal_stinker = cursor.fetchone()
             print(f"here's the fetched record for {species} with the lowest IVs for {receiving_user}: {current_personal_stinker}")
             #return records
@@ -760,19 +760,23 @@ def parse_pokebot_message(*args):
         extracted_total_phase_encounters_dict = fields_list[5]
         total_phase_encounters_raw = extracted_total_phase_encounters_dict["value"]
         ## Trim Total Phase Encounters
-        total_phase_encounters_string = total_phase_encounters_raw.split(' ', 1)[0]
-        total_phase_encounters_rate_string = total_phase_encounters_raw.split(' ', 1)[1]
+        total_phase_encounters_split = total_phase_encounters_raw.split(' ', 1)
+        total_phase_encounters_string = total_phase_encounters_split[0]
+        total_phase_encounters_rate_string = total_phase_encounters_split[1] if len(total_phase_encounters_split) > 1 else ""
         total_phase_encounters = int(total_phase_encounters_string.replace(",", ""))
         print(f"Total Phase Encounters: {total_phase_encounters}")
         print(f"Total Phase Encounters Hourly Rate: {total_phase_encounters_rate_string}")
         pb_message_dict['total_phase_encounters'] = total_phase_encounters
 
         ## Extract Phase Same Pokémon Streak
-        extracted_phase_same_pkmn_streak_dict = fields_list[8]
-        phase_same_pkmn_streak = extracted_phase_same_pkmn_streak_dict["value"]
-        ## Trim excess data from Phase Same Pokémon Streak
-        phase_same_pkmn_streak = phase_same_pkmn_streak.replace(" were encountered in a row!", "")
-        pb_message_dict['phase_same_pkmn_streak'] = phase_same_pkmn_streak
+        if len(fields_list) > 8:
+            extracted_phase_same_pkmn_streak_dict = fields_list[8]
+            phase_same_pkmn_streak = extracted_phase_same_pkmn_streak_dict["value"]
+            ## Trim excess data from Phase Same Pokémon Streak
+            phase_same_pkmn_streak = phase_same_pkmn_streak.replace(" were encountered in a row!", "")
+            pb_message_dict['phase_same_pkmn_streak'] = phase_same_pkmn_streak
+        else:
+            pb_message_dict['phase_same_pkmn_streak'] = None
 
         ## Receiving User
         user_string_initiator_index = message.content.find("<@")
