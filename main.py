@@ -735,7 +735,11 @@ def parse_pokebot_message(message):
         user_string_initiator_index = message.content.find("<@")
         if user_string_initiator_index != -1:
             print(f"Substring found at index {user_string_initiator_index}")
-            extracted_string = message.content[user_string_initiator_index + 2:user_string_initiator_index + 20]
+            mention_start = user_string_initiator_index + 2
+            mention_end = message.content.find(">", mention_start)
+            if mention_end == -1:
+                mention_end = len(message.content)
+            extracted_string = message.content[mention_start:mention_end]
             print(f"Extracted user_id: {extracted_string}")
             pb_message_dict['user'] = extracted_string
         else:

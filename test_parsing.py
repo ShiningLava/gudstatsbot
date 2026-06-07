@@ -247,6 +247,19 @@ def test_parse_extracts_user_from_mention(bot):
     assert pb["user"] == "223895172675534848"
 
 
+def test_parse_reads_full_mention_regardless_of_id_length(bot):
+    """Regression: the mention used to be sliced with a fixed 18-char window, so
+    17- or 19-digit Discord IDs were truncated or kept a trailing '>'. The parser
+    now reads to the closing '>'."""
+    for i, uid in enumerate([
+        "12345678901234567",    # 17 digits
+        "123456789012345678",   # 18 digits
+        "1234567890123456789",  # 19 digits
+    ]):
+        pb = bot.parse_pokebot_message(build_message(user=uid, message_id=9200 + i))
+        assert pb["user"] == uid
+
+
 def test_parse_defaults_user_when_no_mention(bot):
     pb = bot.parse_pokebot_message(build_message(user=None, message_id=557))
     assert pb["user"] == "user"
