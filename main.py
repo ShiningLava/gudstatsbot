@@ -27,6 +27,19 @@ token = config['token']
 guild_id = int(config['guild_id'])
 target_user_1 = int(config['target_user_1'])
 target_channel = int(config['target_channel'])
+
+# Single source of truth for the pokebot table schema.
+CREATE_POKEBOT_TABLE_SQL = """CREATE TABLE IF NOT EXISTS pokebot(
+    species VARCHAR(30),
+    total_ivs INT,
+    shiny_value INT,
+    held_item VARCHAR(30),
+    phase_encounters INT,
+    phase_same_pkmn_streak INT,
+    receiving_user VARCHAR(30),
+    message_id VARCHAR(50))
+    """
+
 sqliteConnection = sqlite3.connect('pokebot.db')
 cursor = sqliteConnection.cursor()
 
@@ -669,19 +682,6 @@ def generate_pokebot_entry(pb_message_dict):
                 pb_message_dict['user'],
                 pb_message_dict['message_id'])
             ]
-            pokebot_table_sql = """ CREATE TABLE pokebot(species VARCHAR(30),
-                total_ivs INT,
-                shiny_value INT,
-                held_item VARCHAR(30),
-                phase_encounters INT,
-                phase_same_pkmn_streak INT,
-                receiving_user VARCHAR(30),
-                message_id VARCHAR(50))
-                """
-            try:
-                cursor.execute(pokebot_table_sql)
-            except sqlite3.Error as e:
-                pass
             for entry in pokebot_entries:
                 entry_id = add_pokebot_entry(conn, entry)
                 print(f'Created entry with id {entry_id}\n')
@@ -783,20 +783,7 @@ def parse_pokebot_message(message):
 def initial_create_db():
     try:
         with sqlite3.connect("pokebot.db") as conn:
-            pokebot_table_sql = """ CREATE TABLE pokebot(
-                species VARCHAR(30),
-                total_ivs INT,
-                shiny_value INT,
-                held_item VARCHAR(30),
-                phase_encounters INT,
-                phase_same_pkmn_streak INT,
-                receiving_user VARCHAR(30),
-                message_id VARCHAR(50))
-                """
-            try:
-                cursor.execute(pokebot_table_sql)
-            except sqlite3.Error as e:
-                pass
+            cursor.execute(CREATE_POKEBOT_TABLE_SQL)
     except Exception as e:
         print(e)
 
