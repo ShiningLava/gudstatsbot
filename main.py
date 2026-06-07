@@ -45,6 +45,10 @@ async def on_message(message):
     if message.author.id == (int(target_user_1)):
         print('Pokebot message detected')
         pb_message_dict = parse_pokebot_message(message)
+
+        ## Debug
+        print(pb_message_dict)
+
         if pb_message_dict:
             generate_pokebot_entry(pb_message_dict)
             ## Need to differentiate personal vs global zero/hero
@@ -67,7 +71,7 @@ async def on_message(message):
 #                    await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386\nNew zero found: {species} with {total_ivs} IVs")
 #                    return
 #                else:
-#                    await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386\n<@{receiving_user}> has discovered a new species: {species}\nTotal Specied for <@{receiving_user}>: {}/386")
+#                    await message.channel.send(f"New species discovered: {species}\nTotal species discovered: {total_species}/386\n<@{receiving_user}> has discovered a new species {species}! {total_personal_species}/386")
 #                    return
 
 #            if new_personal_species_found:
@@ -304,19 +308,51 @@ async def user_string_test(interaction):
 
     await interaction.followup.send(f"Extracted String: {extracted_string}")
 
+
+
+
+
+
+
+
+
+
 @tree.command(
     name="pokebot_test",
     description="temp command to test message responses",
     guild=discord.Object(id=guild_id),
 )
 async def pokebot_test(interaction):
+#async def pokebot_embed_test(ctx: commands.Context):
     channel = client.get_channel(int(target_channel))
     await interaction.response.defer()
-    string_unformatted = """Encountered a shiny ✨ Torchic ✨!
-📢 <@223895172675534848>
-{'footer': {'text': 'ID: chance is smelly but is also 500k encounters ahead of me | Pokémon Emerald (E)\nPokéBot Gen3 20250714.0'}, 'image': {'width': 240, 'url': 'https://cdn.discordapp.com/attachments/1261431186836947056/1397742200066146415/embed.gif?ex=6882d45d&is=688182dd&hm=6ed55fc61673f264de20753ac36b37d3474c241dc611a29291642af10e0dd9db&', 'proxy_url': 'https://media.discordapp.net/attachments/1261431186836947056/1397742200066146415/embed.gif?ex=6882d45d&is=688182dd&hm=6ed55fc61673f264de20753ac36b37d3474c241dc611a29291642af10e0dd9db&', 'placeholder_version': 1, 'placeholder': 'AAgCBYAAAAAAAAAAAAAAAAAAAAAA', 'height': 160, 'flags': 32, 'description': None, 'content_type': 'image/gif'}, 'thumbnail': {'width': 128, 'url': 'https://cdn.discordapp.com/attachments/1261431186836947056/1397742199764029531/thumb.png?ex=6882d45d&is=688182dd&hm=e83f73867379fa132c73c57277b80676ba7a998bf1eb0f8cb0532f4041340385&', 'proxy_url': 'https://media.discordapp.net/attachments/1261431186836947056/1397742199764029531/thumb.png?ex=6882d45d&is=688182dd&hm=e83f73867379fa132c73c57277b80676ba7a998bf1eb0f8cb0532f4041340385&', 'placeholder_version': 1, 'placeholder': '42qCBQAjeZWJZXJc91V/MvjlCLd4mHN7eA==', 'height': 128, 'flags': 0, 'description': None, 'content_type': 'image/png'}, 'fields': [{'value': '3', 'name': 'Shiny Value', 'inline': False}, {'value': '```╔═══╤═══╤═══╤═══╤═══╤═══╗\n║HP │ATK│DEF│SPA│SPD│SPE║\n╠═══╪═══╪═══╪═══╪═══╪═══╣\n║ 0 │ 2 │12 │19 │23 │20 ║\n╚═══╧═══╧═══╧═══╧═══╧═══╝```', 'name': 'IVs (76)', 'inline': False}, {'value': 'None', 'name': 'Held item', 'inline': False}, {'value': '7,103 (1✨)', 'name': 'Torchic Encounters', 'inline': False}, {'value': '7,103', 'name': 'Torchic Phase Encounters', 'inline': False}, {'value': '7,103 (26/h)', 'name': 'Phase Encounters', 'inline': False}}"""
-    await interaction.followup.send(f"{string_unformatted}")
 
+
+#########
+
+
+    embed = discord.Embed(
+    title="Shiny encountered!",
+    description="Timid Wurmple♀ (Lv. 4) at Route 104!",
+    color=discord.Color.random()
+)
+
+    embed.add_field(name="Shiny Value", value="3")
+    embed.add_field(name="IVs (106)", value="Chance is smelly")
+    embed.add_field(name="Held Item", value="None")
+    embed.add_field(name="Wurmple Encounters", value="393,938 (58)")
+    embed.add_field(name="Wurmple Phase Encounters", value="305")
+    embed.add_field(name="Phase Encounters", value="1,634 (260/h)")
+    embed.add_field(name="Empty Field", value="Empty Field")
+    embed.add_field(name="Empty Field", value="Empty Field")
+    embed.add_field(name="Phase Same Pokémon Streak", value="9 Poochyena were encountered in a row!")
+
+
+#########
+
+
+    await interaction.followup.send("Encountered a shiny ✨ Wurmple ✨!\n📢 <@223895172675534848>\n<@1383618792084602900>", embed=embed)
+    #await ctx.send(embed=embed)
 
 # Commented out code is to differentiate between personal and global check
 #def total_species_in_dex(pb_message_dict):
@@ -623,6 +659,12 @@ def generate_pokebot_entry(pb_message_dict):
 
 def parse_pokebot_message(*args):
     message = args[0]
+    
+    ## Debug
+    print("Message:", message)
+    print("Message content:", message.content)
+    print("Message embeds:", message.embeds)
+
     if message.content.startswith("Encountered a") or message.content.startswith("Received a"):
         print("\npokebot shiny or anti-shiny detected")
         cursor = sqliteConnection.cursor()
