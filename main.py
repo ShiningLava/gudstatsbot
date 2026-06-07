@@ -40,6 +40,8 @@ CREATE_POKEBOT_TABLE_SQL = """CREATE TABLE IF NOT EXISTS pokebot(
     message_id VARCHAR(50))
     """
 
+DB_PATH = "pokebot.db"
+
 sqliteConnection = sqlite3.connect('pokebot.db')
 cursor = sqliteConnection.cursor()
 
@@ -399,6 +401,31 @@ async def run_tests(interaction: discord.Interaction):
             header + "Output too long for a message — full log attached.",
             file=discord.File(buffer, filename="pytest_results.txt"),
         )
+
+
+def run_query(query, params=(), *, fetch="all"):
+    """Run a single query against the pokebot DB on its own connection.
+
+    fetch: "all" -> fetchall, "one" -> fetchone, "many1" -> fetchmany(1),
+           "none" -> commit and return lastrowid. Returns None on error.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        cur = conn.cursor()
+        cur.execute(query, params)
+        if fetch == "none":
+            conn.commit()
+            return cur.lastrowid
+        if fetch == "one":
+            return cur.fetchone()
+        if fetch == "many1":
+            return cur.fetchmany(1)
+        return cur.fetchall()
+    except sqlite3.Error as e:
+        print(e)
+        return None
+    finally:
+        conn.close()
 
 
 def total_species_in_dex():
