@@ -14,6 +14,10 @@ import discord
 from discord import app_commands
 import sqlite3
 import json
+import os
+import sys
+import io
+import asyncio
 from discord.ext import commands
 
 with open('config.json', 'r') as g:
@@ -309,14 +313,6 @@ async def user_string_test(interaction):
     await interaction.followup.send(f"Extracted String: {extracted_string}")
 
 
-
-
-
-
-
-
-
-
 @tree.command(
     name="pokebot_test",
     description="temp command to test message responses",
@@ -357,6 +353,58 @@ async def pokebot_test(interaction):
 # Commented out code is to differentiate between personal and global check
 #def total_species_in_dex(pb_message_dict):
 #    receiving_user = pb_message_dict['user']
+
+@tree.command(
+    name="run_tests",
+    description="Run the parsing test suite (test_parsing.py) and report the results",
+    guild=discord.Object(id=guild_id),
+)
+async def run_tests(interaction: discord.Interaction):
+    # May take a few seconds (subprocess startup), so defer first.
+    await interaction.response.defer()
+
+    # Run pytest in a *fresh* interpreter (sys.executable -> same venv) rather
+    # than in-process: test_parsing.py chdir's and re-imports main, and the
+    # live bot already holds an open connection to the real pokebot.db. A
+    # subprocess keeps the test run fully isolated from the running bot.
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    cmd = [sys.executable, "-m", "pytest", "test_parsing.py", "-q"]
+    proc = None
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            cwd=base_dir,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=120)
+    except asyncio.TimeoutError:
+        if proc: proc.kill()
+        await interaction.followup.send("Test run timed out after 120s.")
+        return
+    except FileNotFoundError:
+        await interaction.followup.send(
+            "Could not launch the test runner. Is pytest installed in the bot's environment?"
+        )
+        return
+
+    output = stdout.decode(errors="replace").strip() or "(no output)"
+    return_code = proc.returncode
+    status = "✅ all tests passed" if return_code == 0 else f"❌ tests failed (exit {return_code})"
+    header = f"`pytest test_parsing.py` — {status}\n"
+
+    fenced = f"{header}```\n{output}\n```"
+    if len(fenced) <= 2000:
+        await interaction.followup.send(fenced)
+    else:
+        # Too long for one Discord message; attach the full log as a file.
+        buffer = io.BytesIO(output.encode())
+        await interaction.followup.send(
+            header + "Output too long for a message — full log attached.",
+            file=discord.File(buffer, filename="pytest_results.txt"),
+        )
+
+
 def total_species_in_dex():
     with sqlite3.connect("pokebot.db") as conn:
         cursor = conn.cursor()
