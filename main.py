@@ -254,40 +254,23 @@ async def custom_db_search(inter: discord.Interaction,
         print(e)
         await inter.response.send_message("database error")
 
-@custom_db_search.autocomplete("species_operator")
-async def column_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
-    options = ["!=", "="]
-    return [app_commands.Choice(name=option, value=option) for option in options if option.lower().startswith(current.lower())][:25]
+def _operator_autocomplete(options):
+    """Build an autocomplete callback that suggests the given SQL comparison operators."""
+    async def _autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
+        return [app_commands.Choice(name=o, value=o) for o in options if o.lower().startswith(current.lower())][:25]
+    return _autocomplete
 
-@custom_db_search.autocomplete("total_ivs_operator")
-async def column_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
-    options = [">", ">=", "=", "!=", "<", "<="]
-    return [app_commands.Choice(name=option, value=option) for option in options if option.lower().startswith(current.lower())][:25]
 
-@custom_db_search.autocomplete("shiny_value_operator")
-async def column_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
-    options = [">", ">=", "=", "!=",  "<", "<="]
-    return [app_commands.Choice(name=option, value=option) for option in options if option.lower().startswith(current.lower())][:25]
+_EQUALITY_OPERATORS = ["!=", "="]
+_COMPARISON_OPERATORS = [">", ">=", "=", "!=", "<", "<="]
 
-@custom_db_search.autocomplete("phase_encounters_operator")
-async def column_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
-    options = [">", ">=", "=", "!=", "<", "<="]
-    return [app_commands.Choice(name=option, value=option) for option in options if option.lower().startswith(current.lower())][:25]
-
-@custom_db_search.autocomplete("phase_same_pkmn_streak_operator")
-async def column_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
-    options = [">", ">=", "=", "!=",  "<", "<="]
-    return [app_commands.Choice(name=option, value=option) for option in options if option.lower().startswith(current.lower())][:25]
-
-@custom_db_search.autocomplete("receiving_user_operator")
-async def column_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
-    options = ["!=", "="]
-    return [app_commands.Choice(name=option, value=option) for option in options if option.lower().startswith(current.lower())][:25]
-
-@custom_db_search.autocomplete("held_item_operator")
-async def column_autocomplete(interaction: discord.Interaction, current: str) -> list[app_commands.Choice[str]]:
-    options = ["!=", "="]
-    return [app_commands.Choice(name=option, value=option) for option in options if option.lower().startswith(current.lower())][:25]
+custom_db_search.autocomplete("species_operator")(_operator_autocomplete(_EQUALITY_OPERATORS))
+custom_db_search.autocomplete("total_ivs_operator")(_operator_autocomplete(_COMPARISON_OPERATORS))
+custom_db_search.autocomplete("shiny_value_operator")(_operator_autocomplete(_COMPARISON_OPERATORS))
+custom_db_search.autocomplete("phase_encounters_operator")(_operator_autocomplete(_COMPARISON_OPERATORS))
+custom_db_search.autocomplete("phase_same_pkmn_streak_operator")(_operator_autocomplete(_COMPARISON_OPERATORS))
+custom_db_search.autocomplete("receiving_user_operator")(_operator_autocomplete(_EQUALITY_OPERATORS))
+custom_db_search.autocomplete("held_item_operator")(_operator_autocomplete(_EQUALITY_OPERATORS))
 
 @tree.command(
     name="user_string_test",
