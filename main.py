@@ -429,44 +429,16 @@ def run_query(query, params=(), *, fetch="all"):
 
 
 def total_species_in_dex():
-    with sqlite3.connect("pokebot.db") as conn:
-        cursor = conn.cursor()
-        sqlite_select_query = """SELECT * FROM pokebot"""
-        try:
-            cursor.execute(sqlite_select_query)
-            records = cursor.fetchall()
-            encountered_species_list = []
-            for record in records:
-                species = record[0]
-                if species not in encountered_species_list:
-                    encountered_species_list.append(species)
-            return len(encountered_species_list)
-        except:
-            pass
+    records = run_query("SELECT * FROM pokebot")
+    if records is None:
+        return
+    return len({record[0] for record in records})
 
 def check_highest_iv():
-    with sqlite3.connect("pokebot.db") as conn:
-        cursor = conn.cursor()
-        sqlite_select_query = """SELECT * FROM pokebot ORDER BY total_ivs DESC"""
-        try:
-            cursor.execute(sqlite_select_query)
-            size = 1
-            records = cursor.fetchmany(size)
-            return records
-        except:
-            pass
+    return run_query("SELECT * FROM pokebot ORDER BY total_ivs DESC", fetch="many1")
 
 def check_lowest_iv():
-    with sqlite3.connect("pokebot.db") as conn:
-        cursor = conn.cursor()
-        sqlite_select_query = """SELECT * FROM pokebot ORDER BY total_ivs ASC"""
-        try:
-            cursor.execute(sqlite_select_query)
-            size = 1
-            records = cursor.fetchmany(size)
-            return records
-        except:
-            pass
+    return run_query("SELECT * FROM pokebot ORDER BY total_ivs ASC", fetch="many1")
 
 def compare_highest_iv(current_highest_iv, message_id):
     try:
@@ -548,27 +520,16 @@ def check_current_alpha(pb_message_dict):
     receiving_user = pb_message_dict['user']
 
     # Global Alpha
-    with sqlite3.connect("pokebot.db") as conn:
-        cursor = conn.cursor()
-        sqlite_select_query = """SELECT * FROM pokebot WHERE species = ? ORDER BY total_ivs DESC"""
-        try:
-            current_global_alpha = cursor.execute(sqlite_select_query, (species,))
-            current_global_alpha = cursor.fetchone()
-            print(f"here's the fetched record for {species} with the highest IVs: {current_global_alpha}")
-        except Exception as e:
-            print(e)
+    current_global_alpha = run_query(
+        "SELECT * FROM pokebot WHERE species = ? ORDER BY total_ivs DESC",
+        (species,), fetch="one")
+    print(f"here's the fetched record for {species} with the highest IVs: {current_global_alpha}")
 
     # Personal Alpha
-    with sqlite3.connect("pokebot.db") as conn:
-        cursor = conn.cursor()
-        sqlite_select_query = """SELECT * FROM pokebot WHERE species = ? AND receiving_user = ? ORDER BY total_ivs DESC"""
-        try:
-            current_personal_alpha = cursor.execute(sqlite_select_query, (species, receiving_user))
-            current_personal_alpha = cursor.fetchone()
-            print(f"here's the fetched record for {species} with the highest IVs for {receiving_user}: {current_personal_alpha}")
-        except Exception as e:
-            print(e)
-            return "error", "error"
+    current_personal_alpha = run_query(
+        "SELECT * FROM pokebot WHERE species = ? AND receiving_user = ? ORDER BY total_ivs DESC",
+        (species, receiving_user), fetch="one")
+    print(f"here's the fetched record for {species} with the highest IVs for {receiving_user}: {current_personal_alpha}")
 
     return current_personal_alpha, current_global_alpha
 
@@ -577,28 +538,16 @@ def check_current_stinker(pb_message_dict):
     receiving_user = pb_message_dict['user']
 
     # Global Stinker
-    with sqlite3.connect("pokebot.db") as conn:
-        cursor = conn.cursor()
-        sqlite_select_query = """SELECT * FROM pokebot WHERE species = ? ORDER BY total_ivs ASC"""
-        try:
-            current_global_stinker = cursor.execute(sqlite_select_query, (species,))
-            current_global_stinker = cursor.fetchone()
-            print(f"here's the fetched record for {species} with the lowest IVs: {current_global_stinker}")
-        except Exception as e:
-            print(e)
+    current_global_stinker = run_query(
+        "SELECT * FROM pokebot WHERE species = ? ORDER BY total_ivs ASC",
+        (species,), fetch="one")
+    print(f"here's the fetched record for {species} with the lowest IVs: {current_global_stinker}")
 
     # Personal Stinker
-    with sqlite3.connect("pokebot.db") as conn:
-        cursor = conn.cursor()
-        sqlite_select_query = """SELECT * FROM pokebot WHERE species = ? AND receiving_user = ? ORDER BY total_ivs ASC"""
-        try:
-            current_personal_stinker = cursor.execute(sqlite_select_query, (species, receiving_user))
-            current_personal_stinker = cursor.fetchone()
-            print(f"here's the fetched record for {species} with the lowest IVs for {receiving_user}: {current_personal_stinker}")
-            #return records
-        except Exception as e:
-            print(e)
-            return "error", "error"
+    current_personal_stinker = run_query(
+        "SELECT * FROM pokebot WHERE species = ? AND receiving_user = ? ORDER BY total_ivs ASC",
+        (species, receiving_user), fetch="one")
+    print(f"here's the fetched record for {species} with the lowest IVs for {receiving_user}: {current_personal_stinker}")
 
     return current_personal_stinker, current_global_stinker
 
@@ -610,24 +559,13 @@ def new_species_check(species):
     # need to adjust function to take receiving_user into account
 
     # Check for global new species
-    with sqlite3.connect("pokebot.db") as conn:
-        cursor = conn.cursor()
-        sqlite_select_query = f"""SELECT * FROM pokebot WHERE species = '{species}'"""
-        try:
-            records = cursor.execute(sqlite_select_query)
-            records = cursor.fetchall()
-            counter = 0
-            for record in records:
-                counter += 1
-            if counter < 2:
-                print(f"New species discovered! {species}")
-                return True
-                # global_new_species_found = True
-            if counter >=2:
-                return False
-                # global_new_species_found = False
-        except Exception as e:
-            print(e)
+    records = run_query("SELECT * FROM pokebot WHERE species = ?", (species,))
+    if records is None:
+        return
+    if len(records) < 2:
+        print(f"New species discovered! {species}")
+        return True
+    return False
 
 #    # Check for personal new_species
 #    with sqlite3.connect("pokebot.db") as conn:
