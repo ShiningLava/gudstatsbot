@@ -1,0 +1,11 @@
+# Byte-compiled / optimized files
+__pycache__/
+
+# Test & tooling caches
+.pytest_cache/
+
+# Local bot data (generated at runtime)
+pokebot.db
+
+# Secrets / local config
+config.json
